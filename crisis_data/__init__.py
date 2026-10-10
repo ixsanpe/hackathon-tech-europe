@@ -14,6 +14,11 @@ from crisis_data.models import (
     InfrastructureItem,
     DataSourceHealth,
     GeoLocation,
+    TrafficIncident,
+    FloodHazardInfo,
+    HazardWarning,
+    EarthquakeEvent,
+    BuildingExposureInfo,
 )
 from crisis_data.agent_tools import (
     get_weather,
@@ -27,6 +32,14 @@ from crisis_data.agent_tools import (
     get_precipitation_radar,
     get_nearby_infrastructure,
     get_data_source_health,
+    get_traffic_incidents,
+    check_flood_hazard,
+    get_hazard_warnings,
+    get_warning_summary,
+    get_recent_earthquakes,
+    get_earthquake_summary,
+    get_building_exposure,
+    get_population_exposure_metrics,
 )
 
 __all__ = [
@@ -40,6 +53,11 @@ __all__ = [
     "InfrastructureItem",
     "DataSourceHealth",
     "GeoLocation",
+    "TrafficIncident",
+    "FloodHazardInfo",
+    "HazardWarning",
+    "EarthquakeEvent",
+    "BuildingExposureInfo",
     "get_weather",
     "get_river_stations",
     "get_river_measurements",
@@ -51,4 +69,12 @@ __all__ = [
     "get_precipitation_radar",
     "get_nearby_infrastructure",
     "get_data_source_health",
+    "get_traffic_incidents",
+    "check_flood_hazard",
+    "get_hazard_warnings",
+    "get_warning_summary",
+    "get_recent_earthquakes",
+    "get_earthquake_summary",
+    "get_building_exposure",
+    "get_population_exposure_metrics",
 ]

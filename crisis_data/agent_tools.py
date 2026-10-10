@@ -24,6 +24,11 @@ from crisis_data.meteoswiss_smn import get_weather_stations, get_meteoswiss_obse
 from crisis_data.meteoswiss_radar import get_precipitation_radar
 from crisis_data.osm_infrastructure import get_nearby_infrastructure
 from crisis_data.health import get_data_source_health
+from crisis_data.astra_traffic import get_traffic_incidents
+from crisis_data.flood_hazard import check_flood_hazard
+from crisis_data.hazard_warnings import get_hazard_warnings, get_warning_summary
+from crisis_data.sed_earthquakes import get_recent_earthquakes, get_earthquake_summary
+from crisis_data.bfs_population import get_building_exposure, get_population_exposure_metrics
 
 __all__ = [
     "get_weather",
@@ -37,4 +42,12 @@ __all__ = [
     "get_precipitation_radar",
     "get_nearby_infrastructure",
     "get_data_source_health",
+    "get_traffic_incidents",
+    "check_flood_hazard",
+    "get_hazard_warnings",
+    "get_warning_summary",
+    "get_recent_earthquakes",
+    "get_earthquake_summary",
+    "get_building_exposure",
+    "get_population_exposure_metrics",
 ]

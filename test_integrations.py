@@ -24,6 +24,11 @@ from crisis_data.meteoswiss_smn import get_weather_stations, get_meteoswiss_obse
 from crisis_data.meteoswiss_radar import get_precipitation_radar
 from crisis_data.osm_infrastructure import get_nearby_infrastructure
 from crisis_data.windy_webcams import WindyWebcamsClient
+from crisis_data.astra_traffic import get_traffic_incidents, AstraTrafficClient
+from crisis_data.flood_hazard import check_flood_hazard
+from crisis_data.hazard_warnings import get_hazard_warnings, get_warning_summary
+from crisis_data.sed_earthquakes import get_recent_earthquakes, get_earthquake_summary
+from crisis_data.bfs_population import get_building_exposure, get_population_exposure_metrics
 
 
 def test_open_meteo() -> bool:
@@ -212,10 +217,123 @@ def test_osm_infrastructure() -> bool:
         return False
 
 
+def test_astra_traffic() -> bool:
+    """Test ASTRA Road Traffic Integration via opentransportdata.swiss."""
+    print("\n[8/12] Testing ASTRA Road Traffic (opentransportdata.swiss)...")
+    try:
+        t0 = time.time()
+        client = AstraTrafficClient()
+        incidents = client.get_traffic_incidents()
+        duration = round(time.time() - t0, 3)
+
+        if not client.has_api_key():
+            print(f"  ! OTD_API_KEY is not configured in environment (.env).")
+            print(f"    -> Status: NEEDS API KEY (Register at https://opentransportdata.swiss/en/register/)")
+            print(f"    ✓ Fallback incident operational ({len(incidents)} simulated items in {duration}s).")
+            return True
+        else:
+            print(f"  ✓ Live DATEX II feed queried in {duration}s ({len(incidents)} active traffic situations):")
+            for inc in incidents[:3]:
+                print(f"    - [{inc.get('road')}] {inc.get('incident_type')}: {inc.get('description')} (Closed: {inc.get('is_closed')})")
+            return True
+    except Exception as e:
+        print(f"  ✕ ASTRA Traffic Test Failed: {e}")
+        return False
+
+
+def test_flood_hazard() -> bool:
+    """Test Swiss Flood Hazard Maps (BAFU Aquaprotect 100 via geo.admin.ch WMS)."""
+    print("\n[9/12] Testing Swiss Flood Hazard Maps (BAFU Aquaprotect)...")
+    try:
+        t0 = time.time()
+        # Test Zurich center coordinates
+        hazard = check_flood_hazard(Config.ZURICH_LAT, Config.ZURICH_LON, return_period=100)
+        duration = round(time.time() - t0, 3)
+
+        assert hazard.get("source") == "BAFU_Aquaprotect", "Unexpected flood hazard source"
+        assert "is_in_flood_zone" in hazard, "Missing is_in_flood_zone key"
+        assert "risk_level" in hazard, "Missing risk_level key"
+        print(f"  ✓ BAFU Aquaprotect WMS evaluated in {duration}s:")
+        print(f"    - Location:            Lat {hazard.get('latitude')}, Lon {hazard.get('longitude')}")
+        print(f"    - In 100y Flood Zone:  {hazard.get('is_in_flood_zone')}")
+        print(f"    - Risk Classification: {hazard.get('risk_level')}")
+        print(f"    - WMS Layer:           {hazard.get('layer_name')}")
+        print(f"    - Geoportal Map URL:   {hazard.get('geoportal_url')}")
+        return True
+    except Exception as e:
+        print(f"  ✕ Swiss Flood Hazard Test Failed: {e}")
+        return False
+
+
+def test_hazard_warnings() -> bool:
+    """Test Official Swiss Hazard Warnings (natural-hazards.ch / meteoswiss-app.ch)."""
+    print("\n[10/12] Testing Official Swiss Hazard Warnings (natural-hazards.ch)...")
+    try:
+        t0 = time.time()
+        summary = get_warning_summary(Config.DEFAULT_ZURICH_PLZ)
+        duration = round(time.time() - t0, 3)
+
+        assert "warning_count" in summary, "Missing warning_count"
+        assert "max_warning_level" in summary, "Missing max_warning_level"
+        print(f"  ✓ Hazard Warnings feed queried in {duration}s for PLZ {summary.get('plz')}:")
+        print(f"    - Max Warning Level:      {summary.get('max_warning_level')} ({summary.get('max_warning_label')})")
+        print(f"    - Active Warnings Count:  {summary.get('warning_count')}")
+        print(f"    - Official Portal URL:    {summary.get('portal_url')}")
+        for w in summary.get("warnings", [])[:3]:
+            print(f"      * [{w.get('hazard_type')}] Level {w.get('warn_level')}: {w.get('description')}")
+        return True
+    except Exception as e:
+        print(f"  ✕ Hazard Warnings Test Failed: {e}")
+        return False
+
+
+def test_sed_earthquakes() -> bool:
+    """Test ETH Swiss Seismological Service (SED FDSN catalog)."""
+    print("\n[11/12] Testing ETH Swiss Seismological Service (SED)...")
+    try:
+        t0 = time.time()
+        summary = get_earthquake_summary()
+        duration = round(time.time() - t0, 3)
+
+        assert "total_events_retrieved" in summary, "Missing total_events_retrieved"
+        events = summary.get("events", [])
+        print(f"  ✓ SED FDSN catalog queried in {duration}s:")
+        print(f"    - Total Events Found: {summary.get('total_events_retrieved')}")
+        print(f"    - Max Magnitude:      {summary.get('max_magnitude')}")
+        for ev in events[:3]:
+            print(f"      * M{ev.get('magnitude')} | {ev.get('location_name')} @ {ev.get('time')} (Depth: {ev.get('depth_km')}km)")
+        return True
+    except Exception as e:
+        print(f"  ✕ ETH SED Earthquake Test Failed: {e}")
+        return False
+
+
+def test_bfs_population() -> bool:
+    """Test Swiss Population & Building Data (BFS GWR via geo.admin.ch)."""
+    print("\n[12/12] Testing Swiss Population and Building Data (BFS / GWR)...")
+    try:
+        t0 = time.time()
+        metrics = get_population_exposure_metrics(8001)
+        duration = round(time.time() - t0, 3)
+
+        assert "sample_buildings_analyzed" in metrics, "Missing sample_buildings_analyzed"
+        assert metrics.get("sample_buildings_analyzed") > 0, "Expected at least 1 building in PLZ 8001"
+        print(f"  ✓ BFS GWR queried in {duration}s for PLZ {metrics.get('postal_code')}:")
+        print(f"    - Sample Buildings Analyzed: {metrics.get('sample_buildings_analyzed')}")
+        print(f"    - Municipality Population:  {metrics.get('total_municipality_population'):,}")
+        print(f"    - Density per km²:          {metrics.get('population_density_per_km2'):,}")
+        print(f"    - Average Floors:           {metrics.get('average_building_floors')}")
+        print(f"    - Pre-1950 Historic Bldgs:  {metrics.get('historic_buildings_pre_1950')}")
+        return True
+    except Exception as e:
+        print(f"  ✕ BFS Building/Population Test Failed: {e}")
+        return False
+
+
 def main() -> int:
     """Run all smoke tests, collect health status, and generate final Markdown table."""
     print("=" * 70)
-    print(" CrisisOS Switzerland — Data Integration Smoke Test Suite")
+    print(" CrisisOS Switzerland — Data Integration Smoke Test Suite (12 Sources)")
     print("=" * 70)
 
     results = [
@@ -226,10 +344,15 @@ def main() -> int:
         test_meteoswiss_smn(),
         test_meteoswiss_radar(),
         test_osm_infrastructure(),
+        test_astra_traffic(),
+        test_flood_hazard(),
+        test_hazard_warnings(),
+        test_sed_earthquakes(),
+        test_bfs_population(),
     ]
 
     print("\n" + "=" * 70)
-    print(" COMPILATION OF DATA SOURCE HEALTH REPORT")
+    print(" COMPILATION OF DATA SOURCE HEALTH REPORT (12 INTEGRATIONS)")
     print("=" * 70)
 
     monitor = HealthMonitor()
@@ -241,7 +364,7 @@ def main() -> int:
     print(f"Test Summary: {passed_count}/{len(results)} integration smoke tests succeeded.")
     print("=" * 70)
 
-    return 0 if passed_count >= 6 else 1
+    return 0 if passed_count >= 11 else 1
 
 
 if __name__ == "__main__":

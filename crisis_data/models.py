@@ -114,3 +114,103 @@ class DataSourceHealth:
     def to_dict(self) -> dict[str, Any]:
         """Convert health record to dictionary."""
         return asdict(self)
+
+
+@dataclass
+class TrafficIncident:
+    """Road traffic incident, road closure, or obstruction from ASTRA / TDP."""
+    incident_id: str
+    road_number: str
+    direction: Optional[str]
+    incident_type: str  # e.g., 'roadworks', 'closure', 'accident', 'congestion'
+    description: str
+    location: Optional[dict[str, Any]]
+    is_closed: bool
+    delay_minutes: Optional[int]
+    updated_at: str
+    source: str = "ASTRA_FEDRO"
+    is_simulated: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert incident to dictionary."""
+        return asdict(self)
+
+
+@dataclass
+class FloodHazardInfo:
+    """Swiss flood hazard zoning information (BAFU Aquaprotect)."""
+    latitude: float
+    longitude: float
+    lv95_east: float
+    lv95_north: float
+    is_in_flood_zone: bool
+    return_period_years: int  # 50, 100, 250, 500
+    risk_level: str  # 'HIGH', 'MEDIUM', 'LOW', 'NONE'
+    layer_name: str
+    geoportal_url: str
+    wms_overlay_url: str
+    source: str = "BAFU_Aquaprotect"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert flood hazard info to dictionary."""
+        return asdict(self)
+
+
+@dataclass
+class HazardWarning:
+    """Official Swiss natural hazard warning (flood, storm, rain, fire, etc.)."""
+    warning_id: str
+    warn_type: int
+    warn_type_name: str  # e.g., 'Flood', 'Thunderstorm', 'Forest Fire', 'Rain'
+    warn_level: int  # 1 (low) to 5 (extreme)
+    region_id: int
+    region_name: str
+    description: str
+    valid_from: str
+    valid_to: Optional[str]
+    direct_url: str
+    source: str = "natural-hazards.ch"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert warning to dictionary."""
+        return asdict(self)
+
+
+@dataclass
+class EarthquakeEvent:
+    """Seismic event record from ETH Swiss Seismological Service (SED)."""
+    event_id: str
+    timestamp: str
+    latitude: float
+    longitude: float
+    depth_km: float
+    magnitude: float
+    magnitude_type: str
+    location_name: str
+    event_type: str  # e.g., 'earthquake', 'quarry blast', 'explosion'
+    source: str = "SED_ETHZ"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert earthquake event to dictionary."""
+        return asdict(self)
+
+
+@dataclass
+class BuildingExposureInfo:
+    """Building record and population exposure metric from BFS (GWR)."""
+    egid: str
+    street: str
+    house_number: str
+    postal_code: int
+    municipality: str
+    year_built: Optional[int]
+    floors: Optional[int]
+    area_m2: Optional[float]
+    latitude: Optional[float]
+    longitude: Optional[float]
+    population_density_km2: float
+    source: str = "BFS_GWR"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert building exposure to dictionary."""
+        return asdict(self)

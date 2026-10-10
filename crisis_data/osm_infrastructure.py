@@ -24,9 +24,16 @@ from crisis_data.models import InfrastructureItem
 class OverpassInfrastructureClient:
     """Client for retrieving critical emergency infrastructure from OpenStreetMap."""
 
-    def __init__(self, endpoint_url: Optional[str] = None, user_agent: Optional[str] = None, timeout: Optional[int] = None) -> None:
+    _global_cache: dict[str, tuple[float, list[dict[str, Any]]]] = {}
+
+    def __init__(
+        self,
+        endpoint_url: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        timeout: Optional[int] = None
+    ) -> None:
         """
-        Initialize the OverpassInfrastructureClient.
+        Initialize the Overpass API client.
 
         Parameters:
             endpoint_url: Optional override for the Overpass interpreter endpoint.
@@ -36,7 +43,7 @@ class OverpassInfrastructureClient:
         self.endpoint_url = endpoint_url or Config.OVERPASS_API_URL
         self.user_agent = user_agent or Config.OVERPASS_USER_AGENT
         self.timeout = timeout or Config.OVERPASS_TIMEOUT_SECONDS
-        self._cache: dict[str, tuple[float, list[dict[str, Any]]]] = {}
+        self._cache = OverpassInfrastructureClient._global_cache
 
     @log_function_call
     def get_nearby_infrastructure(
@@ -97,13 +104,35 @@ class OverpassInfrastructureClient:
             "Accept": "application/json",
         }
 
-        response = requests.post(
+        endpoints = [
+            "https://overpass.kumi.systems/api/interpreter",
+            "https://overpass.private.coffee/api/interpreter",
             self.endpoint_url,
-            data={"data": overpass_ql},
-            headers=headers,
-            timeout=self.timeout
-        )
-        response.raise_for_status()
+            "https://lz4.overpass-api.de/api/interpreter",
+        ]
+        response = None
+        last_error = None
+        for endpoint in endpoints:
+            try:
+                response = requests.post(
+                    endpoint,
+                    data={"data": overpass_ql},
+                    headers=headers,
+                    timeout=self.timeout,
+                )
+                if response.status_code == 200:
+                    break
+                else:
+                    last_error = requests.HTTPError(f"{response.status_code} Error from {endpoint}")
+            except requests.RequestException as exc:
+                last_error = exc
+                continue
+
+        if response is None or response.status_code != 200:
+            if last_error:
+                raise last_error
+            raise requests.RequestException("All Overpass endpoints failed")
+
         data = response.json()
 
         elements = data.get("elements", [])

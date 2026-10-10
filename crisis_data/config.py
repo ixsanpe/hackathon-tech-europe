@@ -103,6 +103,49 @@ class Config:
     GEMINI_REASONING_MODEL: str = "gemini-2.5-pro"
 
     # --------------------------------------------------------------------------
+    # Priority 8: ASTRA Road Traffic (opentransportdata.swiss)
+    # --------------------------------------------------------------------------
+    ASTRA_TRAFFIC_URL: str = "https://api.opentransportdata.swiss/TDP/Soap_Datex2/TrafficSituations/Pull"
+    ASTRA_TIMEOUT_SECONDS: int = 15
+    OTD_API_KEY: Optional[str] = os.getenv("OTD_API_KEY") or os.getenv("ASTRA_API_KEY")
+
+    # --------------------------------------------------------------------------
+    # Priority 9: Swiss Flood Hazard Maps (BAFU Aquaprotect)
+    # --------------------------------------------------------------------------
+    BAFU_WMS_URL: str = "https://wms.geo.admin.ch/"
+    BAFU_AQUAPROTECT_LAYER_100: str = "ch.bafu.aquaprotect_100"
+    BAFU_AQUAPROTECT_LAYER_50: str = "ch.bafu.aquaprotect_050"
+    BAFU_AQUAPROTECT_LAYER_250: str = "ch.bafu.aquaprotect_250"
+    BAFU_AQUAPROTECT_LAYER_500: str = "ch.bafu.aquaprotect_500"
+    FLOOD_HAZARD_TIMEOUT_SECONDS: int = 10
+
+    # --------------------------------------------------------------------------
+    # Priority 10: Official Swiss Hazard Warnings (natural-hazards.ch backend)
+    # --------------------------------------------------------------------------
+    NATURAL_HAZARDS_BASE_URL: str = "https://app-prod-ws.meteoswiss-app.ch/v1"
+    NATURAL_HAZARDS_PLZ_ENDPOINT: str = "https://app-prod-ws.meteoswiss-app.ch/v1/plzDetail"
+    NATURAL_HAZARDS_TIMEOUT_SECONDS: int = 10
+    DEFAULT_ZURICH_PLZ: str = "800100"
+
+    # --------------------------------------------------------------------------
+    # Priority 11: ETH Swiss Seismological Service (SED)
+    # --------------------------------------------------------------------------
+    SED_FDSN_URL: str = "http://arclink.ethz.ch/fdsnws/event/1/query"
+    SED_TIMEOUT_SECONDS: int = 10
+    SED_DEFAULT_MIN_MAGNITUDE: float = 0.5
+
+    # --------------------------------------------------------------------------
+    # Priority 12: Swiss Population and Building Exposure (BFS)
+    # --------------------------------------------------------------------------
+    BFS_GWR_SEARCH_URL: str = "https://api3.geo.admin.ch/rest/services/all/MapServer/find"
+    BFS_GWR_LAYER: str = "ch.bfs.gebaeude_wohnungs_register"
+    BFS_TIMEOUT_SECONDS: int = 15
+    BFS_ZURICH_MUNICIPALITY_ID: int = 261
+    BFS_ZURICH_POPULATION_ESTIMATE: int = 447000
+    BFS_ZURICH_AREA_KM2: float = 87.93
+    BFS_ZURICH_DENSITY_PER_KM2: float = 5084.0
+
+    # --------------------------------------------------------------------------
     # General HTTP & Cache Settings
     # --------------------------------------------------------------------------
     HTTP_MAX_RETRIES: int = 2

@@ -79,9 +79,14 @@ Every function execution is logged at `INFO` level using `@log_function_call` in
 | **Ground Station Observations** | [`crisis_data/meteoswiss_smn.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/meteoswiss_smn.py) | Priority 5: High-precision 10-minute automated ground weather observations from SwissMetNet (`sma`, `reh`, `klo`). |
 | **Precipitation Radar** | [`crisis_data/meteoswiss_radar.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/meteoswiss_radar.py) | Priority 6: STAC discovery for national 5-minute radar composites across Switzerland. |
 | **Critical Infrastructure** | [`crisis_data/osm_infrastructure.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/osm_infrastructure.py) | Priority 7: Identification of nearby hospitals, fire stations, and vulnerable bridges from OpenStreetMap Overpass. |
-| **Data Health Monitor** | [`crisis_data/health.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/health.py) | Dynamic diagnostics across all external data sources, producing markdown health tables. |
+| **ASTRA Road Traffic** | [`crisis_data/astra_traffic.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/astra_traffic.py) | Priority 8: Real-time road closures, incidents, and congestion on Swiss motorways (A1, A3) via opentransportdata.swiss DATEX II. |
+| **Swiss Flood Hazard Maps** | [`crisis_data/flood_hazard.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/flood_hazard.py) | Priority 9: Official BAFU Aquaprotect 100-year flood zone spatial evaluation via geo.admin.ch WMS GetFeatureInfo in EPSG:2056. |
+| **Official Hazard Warnings** | [`crisis_data/hazard_warnings.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/hazard_warnings.py) | Priority 10: Official Swiss federal natural hazard warnings (levels 1-5) from natural-hazards.ch / MeteoSwiss alerting feed. |
+| **ETH Seismological Service** | [`crisis_data/sed_earthquakes.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/sed_earthquakes.py) | Priority 11: Real-time Swiss earthquake monitoring catalog (magnitude, depth, epicenter) via ETH SED FDSN Web Service. |
+| **Swiss Population & Buildings** | [`crisis_data/bfs_population.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/bfs_population.py) | Priority 12: Building stock (BFS GWR) and demographic exposure metrics (STATPOP) via geo.admin.ch MapServer find service. |
+| **Data Health Monitor** | [`crisis_data/health.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/health.py) | Dynamic diagnostics across all 12 external data sources, producing automated Markdown health reports. |
 | **Gemini Tool Interface** | [`crisis_data/agent_tools.py`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/agent_tools.py) | Standalone callable functions with standard typed signatures ready for Gemini Tool declarations. |
-| **Integration Test Suite** | [`test_integrations.py`](file:///Users/martinmaranon2/hackathon-tech-europe/test_integrations.py) | End-to-end smoke test runner verifying connectivity, real data retrieval, and data freshness across all 7 sources. |
+| **Integration Test Suite** | [`test_integrations.py`](file:///Users/martinmaranon2/hackathon-tech-europe/test_integrations.py) | End-to-end smoke test runner verifying connectivity, real data retrieval, and data freshness across all 12 sources. |
 
 ---
 
@@ -97,7 +102,15 @@ The data layer exposes the following standardized functions for Gemini reasoning
 6. `get_weather_stations(radius_km: float = 30.0) -> List[Dict[str, Any]]`
 7. `get_precipitation_radar(limit: int = 5) -> Dict[str, Any]`
 8. `get_nearby_infrastructure(latitude: float = 47.3769, longitude: float = 8.5417, radius_km: float = 3.0) -> List[Dict[str, Any]]`
-9. `get_data_source_health() -> List[Dict[str, Any]]`
+9. `get_traffic_incidents(road_filter: Optional[str] = None) -> List[Dict[str, Any]]`
+10. `check_flood_hazard(latitude: float = 47.3769, longitude: float = 8.5417, return_period: int = 100) -> Dict[str, Any]`
+11. `get_hazard_warnings(plz: str = "800100") -> List[Dict[str, Any]]`
+12. `get_warning_summary(plz: str = "800100") -> Dict[str, Any]`
+13. `get_recent_earthquakes(min_magnitude: float = 0.5, limit: int = 10) -> List[Dict[str, Any]]`
+14. `get_earthquake_summary() -> Dict[str, Any]`
+15. `get_building_exposure(postal_code: int = 8001, limit: int = 50) -> List[Dict[str, Any]]`
+16. `get_population_exposure_metrics(postal_code: int = 8001) -> Dict[str, Any]`
+17. `get_data_source_health() -> List[Dict[str, Any]]`
 
 ---
 

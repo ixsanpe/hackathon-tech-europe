@@ -22,6 +22,11 @@ from crisis_data.swisstopo import SwisstopoClient
 from crisis_data.meteoswiss_smn import MeteoSwissSMNClient
 from crisis_data.meteoswiss_radar import MeteoSwissRadarClient
 from crisis_data.osm_infrastructure import OverpassInfrastructureClient
+from crisis_data.astra_traffic import AstraTrafficClient
+from crisis_data.flood_hazard import FloodHazardClient
+from crisis_data.hazard_warnings import HazardWarningsClient
+from crisis_data.sed_earthquakes import SedEarthquakeClient
+from crisis_data.bfs_population import BfsPopulationClient
 
 
 class HealthMonitor:
@@ -36,6 +41,11 @@ class HealthMonitor:
         self.meteoswiss_smn = MeteoSwissSMNClient()
         self.meteoswiss_radar = MeteoSwissRadarClient()
         self.overpass = OverpassInfrastructureClient()
+        self.astra = AstraTrafficClient()
+        self.flood_hazard = FloodHazardClient()
+        self.hazard_warnings = HazardWarningsClient()
+        self.sed = SedEarthquakeClient()
+        self.bfs = BfsPopulationClient()
 
     @log_function_call
     def check_all_sources(self) -> list[DataSourceHealth]:
@@ -206,7 +216,7 @@ class HealthMonitor:
 
         # 7. OpenStreetMap / Overpass
         try:
-            infra = self.overpass.get_nearby_infrastructure(Config.ZURICH_LAT, Config.ZURICH_LON, radius_km=3.0)
+            infra = self.overpass.get_nearby_infrastructure(Config.ZURICH_LAT, Config.ZURICH_LON, radius_km=2.5)
             has_infra = len(infra) > 0
             reports.append(DataSourceHealth(
                 source="OpenStreetMap Overpass",
@@ -215,11 +225,142 @@ class HealthMonitor:
                 real_data_retrieved=has_infra,
                 freshness="Live OSM Database",
                 status="WORKING" if has_infra else "PARTIALLY WORKING",
-                details=f"{len(infra)} infrastructure features within 3km of Zurich center",
+                details=f"{len(infra)} infrastructure features within 2.5km of Zurich center",
             ))
         except Exception as e:
             reports.append(DataSourceHealth(
                 source="OpenStreetMap Overpass",
+                auth_required=False,
+                connectivity=False,
+                real_data_retrieved=False,
+                freshness="N/A",
+                status="BLOCKED",
+                details=str(e),
+            ))
+
+        # 8. ASTRA Road Traffic (opentransportdata.swiss)
+        if not self.astra.has_api_key():
+            reports.append(DataSourceHealth(
+                source="ASTRA Road Traffic",
+                auth_required=True,
+                connectivity=True,
+                real_data_retrieved=False,
+                freshness="N/A (Key required)",
+                status="NEEDS API KEY",
+                details="Requires OTD_API_KEY from https://opentransportdata.swiss/en/register/.",
+            ))
+        else:
+            try:
+                incidents = self.astra.get_traffic_incidents()
+                has_incidents = len(incidents) > 0 and not incidents[0].get("is_simulated")
+                reports.append(DataSourceHealth(
+                    source="ASTRA Road Traffic",
+                    auth_required=True,
+                    connectivity=True,
+                    real_data_retrieved=has_incidents,
+                    freshness="Real-time DATEX II feed",
+                    status="WORKING" if has_incidents else "PARTIALLY WORKING",
+                    details=f"{len(incidents)} traffic situations retrieved",
+                ))
+            except Exception as e:
+                reports.append(DataSourceHealth(
+                    source="ASTRA Road Traffic",
+                    auth_required=True,
+                    connectivity=False,
+                    real_data_retrieved=False,
+                    freshness="N/A",
+                    status="BLOCKED",
+                    details=str(e),
+                ))
+
+        # 9. Swiss Flood Hazard Maps (BAFU Aquaprotect)
+        try:
+            hazard = self.flood_hazard.check_flood_hazard(Config.ZURICH_LAT, Config.ZURICH_LON, return_period=100)
+            has_hazard = hazard.get("risk_level") is not None
+            reports.append(DataSourceHealth(
+                source="Swiss Flood Hazard Maps",
+                auth_required=False,
+                connectivity=True,
+                real_data_retrieved=has_hazard,
+                freshness="Official BAFU Model (geo.admin.ch WMS)",
+                status="WORKING" if has_hazard else "PARTIALLY WORKING",
+                details=f"Zurich center risk level: {hazard.get('risk_level')}, zone: {hazard.get('is_in_flood_zone')}",
+            ))
+        except Exception as e:
+            reports.append(DataSourceHealth(
+                source="Swiss Flood Hazard Maps",
+                auth_required=False,
+                connectivity=False,
+                real_data_retrieved=False,
+                freshness="N/A",
+                status="BLOCKED",
+                details=str(e),
+            ))
+
+        # 10. Official Swiss Hazard Warnings (natural-hazards.ch)
+        try:
+            warnings = self.hazard_warnings.get_hazard_warnings(Config.DEFAULT_ZURICH_PLZ)
+            # Even if 0 warnings active today, valid response indicates working feed
+            reports.append(DataSourceHealth(
+                source="Official Swiss Hazard Warnings",
+                auth_required=False,
+                connectivity=True,
+                real_data_retrieved=True,
+                freshness="Live Federal Alerting Feed",
+                status="WORKING",
+                details=f"{len(warnings)} active warnings for PLZ {Config.DEFAULT_ZURICH_PLZ}",
+            ))
+        except Exception as e:
+            reports.append(DataSourceHealth(
+                source="Official Swiss Hazard Warnings",
+                auth_required=False,
+                connectivity=False,
+                real_data_retrieved=False,
+                freshness="N/A",
+                status="BLOCKED",
+                details=str(e),
+            ))
+
+        # 11. ETH Swiss Seismological Service (SED)
+        try:
+            quakes = self.sed.get_recent_earthquakes(min_magnitude=0.5, limit=5, swiss_only=True)
+            has_quakes = len(quakes) > 0
+            reports.append(DataSourceHealth(
+                source="ETH Swiss Seismological Service",
+                auth_required=False,
+                connectivity=True,
+                real_data_retrieved=has_quakes,
+                freshness=f"Latest: {quakes[0].get('timestamp')}" if has_quakes else "Live FDSN",
+                status="WORKING" if has_quakes else "PARTIALLY WORKING",
+                details=f"{len(quakes)} events retrieved; latest M{quakes[0].get('magnitude') if has_quakes else 'N/A'}",
+            ))
+        except Exception as e:
+            reports.append(DataSourceHealth(
+                source="ETH Swiss Seismological Service",
+                auth_required=False,
+                connectivity=False,
+                real_data_retrieved=False,
+                freshness="N/A",
+                status="BLOCKED",
+                details=str(e),
+            ))
+
+        # 12. Swiss Population & Building Data (BFS)
+        try:
+            buildings = self.bfs.get_building_exposure(postal_code=8001, limit=5)
+            has_buildings = len(buildings) > 0
+            reports.append(DataSourceHealth(
+                source="Swiss Population & Building Data",
+                auth_required=False,
+                connectivity=True,
+                real_data_retrieved=has_buildings,
+                freshness="Federal GWR & STATPOP Register",
+                status="WORKING" if has_buildings else "PARTIALLY WORKING",
+                details=f"Retrieved {len(buildings)} buildings in PLZ 8001; sample EGID {buildings[0].get('egid') if has_buildings else 'N/A'}",
+            ))
+        except Exception as e:
+            reports.append(DataSourceHealth(
+                source="Swiss Population & Building Data",
                 auth_required=False,
                 connectivity=False,
                 real_data_retrieved=False,
