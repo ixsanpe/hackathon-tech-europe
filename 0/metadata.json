@@ -1,0 +1,11 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4JWB7Z0SC62G752J9C4DX9X",
+  "session_id": "eae1ee2c-9360-478d-a7ed-f276b1b137eb",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-10T12:24:31.380362Z",
+  "checkpoints_count": 20,
+  "files_touched": null,
+  "agent": "Antigravity",
+  "model": ""
+}
