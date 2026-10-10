@@ -1,0 +1,47 @@
+git status -sb
+entire status
+entire brain setup --no-backfill
+entire brain status
+
+---
+
+entire graph search "Where are the Swiss environmental data integrations implemented?"
+
+---
+
+entire brain overview
+
+---
+
+Verify Entire Brain and Entire Graph are fully operational on our current CrisisOS branch.
+
+Use Brain to retrieve actual previous architectural decisions concerning our Swiss data integrations.
+
+Use Graph to locate the corresponding implementations and trace their dependencies.
+
+Show the real tool calls and results. Confirm whether the semantic index reflects the current branch and commit.
+
+Do not modify code or reinstall anything. Report any remaining problems.
+
+---
+
+We are currently in the middle of a Git merge from origin/main into feat/data-integration.
+
+There are add/add conflicts in `.gitignore` and `CLAUDE.md`.
+
+Resolve both conflicts carefully:
+
+1. In `.gitignore`, preserve all useful ignore rules from both branches, especially `.env`, API credentials, `__pycache__/`, and generated files.
+2. In `CLAUDE.md`, preserve all relevant project instructions from both branches, especially Entire Graph and Entire Brain instructions. Deduplicate only genuinely identical content.
+3. Remove all Git conflict markers.
+4. Do not modify unrelated files, delete work, reset branches, or abort the merge.
+5. Verify the resolved files with `git diff --check`.
+6. Stage only the two resolved files using `git add .gitignore CLAUDE.md`.
+7. Show me the final changes and confirm that the conflicts are resolved.
+
+Do not create the merge commit yet. I'll approve that separately.
+
+---
+
+git status
+git diff --cached --check
