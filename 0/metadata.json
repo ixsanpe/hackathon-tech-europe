@@ -1,0 +1,64 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4JTR6D18JEY2EDVEF71WXE0",
+  "session_id": "3dca993c-ba90-4954-a674-7f2de529de18",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-10T11:56:45.951193Z",
+  "branch": "test/alonso2",
+  "checkpoints_count": 4,
+  "save_step_count": 3,
+  "files_touched": [
+    "test.txt"
+  ],
+  "agent": "Antigravity",
+  "model": "",
+  "turn_id": "4420684bef30",
+  "session_metrics": {
+    "turn_count": 4
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-10T11:56:45.9314854Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 0,
+    "total_lines_changed": 0,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 1,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "test.txt": 1
+      }
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 1,
+      "agent_lines_removed": 0
+    }
+  ]
+}
