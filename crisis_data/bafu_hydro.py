@@ -11,6 +11,7 @@ Use Cases:
 2. Fetching live 10-minute water level (W, m a.s.l.) and discharge (Q, m3/s) observations.
 3. Detecting abnormal water discharge or potential flood conditions along the Sihl and Limmat.
 4. Normalizing raw BAFU measurements into standard CrisisOS observation schemas.
+5. Securing GraphQL queries against parameter injection using strongly-typed variable bindings.
 """
 
 from typing import Any, Optional
@@ -149,22 +150,22 @@ class BafuHydroClient:
             Dictionary containing latest parameter readings (water level W, discharge Q, temperature WT)
             and normalized CrisisOS observations.
         """
-        query = f"""
-        query GetLiveStationData {{
-          water {{
-            observations {{
-              data_live(where: {{ stationNo: {{ _eq: "{station_id}" }} }}) {{
+        query = """
+        query GetLiveStationData($stationNo: String!) {
+          water {
+            observations {
+              data_live(where: { stationNo: { _eq: $stationNo } }) {
                 stationNo
                 parameterName
                 timestamp
                 value
                 releaseStatus
-              }}
-            }}
-          }}
-        }}
+              }
+            }
+          }
+        }
         """
-        result = self.execute_graphql(query)
+        result = self.execute_graphql(query, variables={"stationNo": str(station_id).strip()})
         data_live = result.get("data", {}).get("water", {}).get("observations", {}).get("data_live", [])
 
         # Parameter units mapping based on BAFU hydrology standards

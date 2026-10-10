@@ -214,6 +214,7 @@ class BuildingExposureInfo:
     longitude: Optional[float]
     population_density_km2: float
     source: str = "BFS_GWR"
+    is_simulated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert building exposure to dictionary."""

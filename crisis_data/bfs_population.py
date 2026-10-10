@@ -15,6 +15,7 @@ Use Cases:
 2. Assessing vulnerability profiles based on building construction years, residential floors, and surface areas.
 3. Calculating exposed population density metrics for emergency evacuations.
 4. Supplying building inventory exposure data to the Gemini multimodal agent.
+5. Providing resilient type-safe attribute parsing and simulated fallback payloads during network or register outages.
 """
 
 from typing import Any, Optional
@@ -39,6 +40,8 @@ class BfsPopulationClient:
         self.timeout: int = timeout_seconds or Config.BFS_TIMEOUT_SECONDS
         self.search_url: str = Config.BFS_GWR_SEARCH_URL
         self.gwr_layer: str = Config.BFS_GWR_LAYER
+        self.last_fetch_success: bool = True
+        self.last_fetch_error: Optional[str] = None
 
     @log_function_call
     def get_building_exposure(
@@ -79,11 +82,43 @@ class BfsPopulationClient:
                 egid = str(attrs.get("egid") or "")
                 street = attrs.get("strname_deinr") or attrs.get("label") or "Unknown Street"
                 house_no = attrs.get("deinr") or ""
-                plz = int(attrs.get("dplz4") or postal_code)
+
+                # Defensively parse postal code
+                plz = postal_code
+                try:
+                    if attrs.get("dplz4") is not None:
+                        plz = int(attrs.get("dplz4"))
+                except (ValueError, TypeError):
+                    plz = postal_code
+
                 commune = attrs.get("ggdename") or "Zürich"
-                year_built = attrs.get("gbauj")
-                floors = attrs.get("gastw")
-                area_m2 = attrs.get("garea")
+
+                # Defensively parse construction year
+                year_built: Optional[int] = None
+                raw_year = attrs.get("gbauj")
+                if raw_year is not None:
+                    try:
+                        year_built = int(raw_year)
+                    except (ValueError, TypeError):
+                        year_built = None
+
+                # Defensively parse floor count
+                floors: Optional[int] = None
+                raw_floors = attrs.get("gastw")
+                if raw_floors is not None:
+                    try:
+                        floors = int(raw_floors)
+                    except (ValueError, TypeError):
+                        floors = None
+
+                # Defensively parse ground surface area
+                area_m2: Optional[float] = None
+                raw_area = attrs.get("garea")
+                if raw_area is not None:
+                    try:
+                        area_m2 = float(raw_area)
+                    except (ValueError, TypeError):
+                        area_m2 = None
 
                 # Coordinates in LV95 (gkode, gkodn)
                 east = attrs.get("gkode")
@@ -94,7 +129,7 @@ class BfsPopulationClient:
                         lat, lon = lv95_to_wgs84(float(east), float(north))
                         lat = round(lat, 5)
                         lon = round(lon, 5)
-                    except Exception as ce:
+                    except (ValueError, TypeError, Exception) as ce:
                         logger.debug(f"Coordinate conversion error for EGID {egid}: {ce}")
 
                 building = BuildingExposureInfo(
@@ -103,18 +138,40 @@ class BfsPopulationClient:
                     house_number=str(house_no),
                     postal_code=plz,
                     municipality=commune,
-                    year_built=int(year_built) if year_built else None,
-                    floors=int(floors) if floors else None,
-                    area_m2=float(area_m2) if area_m2 else None,
+                    year_built=year_built,
+                    floors=floors,
+                    area_m2=area_m2,
                     latitude=lat,
                     longitude=lon,
                     population_density_km2=Config.BFS_ZURICH_DENSITY_PER_KM2,
                     source="BFS_GWR",
+                    is_simulated=False,
                 )
                 buildings.append(building.to_dict())
 
-        except requests.exceptions.RequestException as e:
+            self.last_fetch_success = True
+            self.last_fetch_error = None
+
+        except (requests.exceptions.RequestException, ValueError, KeyError) as e:
+            self.last_fetch_success = False
+            self.last_fetch_error = str(e)
             logger.error(f"Failed to query BFS building register for PLZ {postal_code}: {e}")
+            fallback_building = BuildingExposureInfo(
+                egid="bfs-error-fallback",
+                street="Service Unavailable Fallback",
+                house_number="N/A",
+                postal_code=postal_code,
+                municipality="Zürich",
+                year_built=None,
+                floors=None,
+                area_m2=None,
+                latitude=Config.ZURICH_LAT,
+                longitude=Config.ZURICH_LON,
+                population_density_km2=Config.BFS_ZURICH_DENSITY_PER_KM2,
+                source="BFS_GWR",
+                is_simulated=True,
+            )
+            return [fallback_building.to_dict()]
 
         return buildings
 
@@ -131,16 +188,36 @@ class BfsPopulationClient:
         """
         buildings = self.get_building_exposure(postal_code=postal_code, limit=50)
 
+        if not self.last_fetch_success:
+            return {
+                "status": "DATA_UNAVAILABLE",
+                "postal_code": postal_code,
+                "municipality": "Zürich",
+                "canton": "ZH",
+                "total_municipality_population": Config.BFS_ZURICH_POPULATION_ESTIMATE,
+                "municipality_area_km2": Config.BFS_ZURICH_AREA_KM2,
+                "population_density_per_km2": Config.BFS_ZURICH_DENSITY_PER_KM2,
+                "sample_buildings_analyzed": 0,
+                "average_building_floors": 0.0,
+                "historic_buildings_pre_1950": 0,
+                "statpop_map_url": "https://map.geo.admin.ch/?layers=ch.bfs.volkszaehlung-bevoelkerungsstatistik_einwohner",
+                "sample_buildings": buildings[:5],
+                "source": "BFS_STATPOP_GWR",
+                "is_simulated": True,
+                "error": self.last_fetch_error,
+            }
+
         # Calculate metrics
         buildings_count = len(buildings)
         avg_floors = 0.0
-        floors_list = [b["floors"] for b in buildings if b["floors"] is not None]
+        floors_list = [b["floors"] for b in buildings if b.get("floors") is not None]
         if floors_list:
             avg_floors = round(sum(floors_list) / len(floors_list), 1)
 
-        historic_buildings = len([b for b in buildings if b["year_built"] and b["year_built"] < 1950])
+        historic_buildings = len([b for b in buildings if b.get("year_built") and b["year_built"] < 1950])
 
         return {
+            "status": "OPERATIONAL",
             "postal_code": postal_code,
             "municipality": "Zürich",
             "canton": "ZH",
@@ -153,6 +230,7 @@ class BfsPopulationClient:
             "statpop_map_url": "https://map.geo.admin.ch/?layers=ch.bfs.volkszaehlung-bevoelkerungsstatistik_einwohner",
             "sample_buildings": buildings[:5],
             "source": "BFS_STATPOP_GWR",
+            "is_simulated": False,
         }
 
 

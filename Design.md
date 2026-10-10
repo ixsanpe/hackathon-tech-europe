@@ -121,9 +121,10 @@ In disaster intelligence and life-critical emergency coordination, transient net
 1. **Flood Hazard Zoning Fail-Safe (`flood_hazard.py`)**:
    - If the external `geo.admin.ch` WMS service times out, is unreachable, or returns a non-200 HTTP code, `risk_level` is explicitly set to `"UNKNOWN"`, `data_available` to `False`, and `status` to an explanatory error code (e.g. `NETWORK_ERROR`, `HTTP_ERROR_503`). It never defaults to `is_in_flood_zone = False` or `risk_level = "NONE"`.
 
-2. **BAFU Hydrological Resilience (`bafu_hydro.py`)**:
+2. **BAFU Hydrological Resilience & Security (`bafu_hydro.py`)**:
    - `BafuHydroClient.execute_graphql()` wraps network requests and JSON decoding in `try...except (requests.RequestException, ValueError, KeyError)`.
    - On network or server failure, it returns a structured payload with error details. `get_river_measurements()` returns a degraded dictionary with `status="DATA_UNAVAILABLE"`, `data_available=False`, and zeroed counts, preventing unhandled exceptions from terminating Gemini tool-calling routines.
+   - **GraphQL Parameterization**: To prevent GraphQL query injection vulnerabilities via user- or agent-supplied station identifiers, `get_river_measurements()` uses strongly-typed GraphQL variables (`query GetLiveStationData($stationNo: String!)`) with variable dictionary mapping (`variables={"stationNo": str(station_id).strip()}`) rather than f-string interpolation.
 
 3. **Federal Natural Hazard Alerts Resilience (`hazard_warnings.py`)**:
    - `HazardWarningsClient` tracks `last_fetch_success` and `last_fetch_error`.
@@ -142,7 +143,12 @@ In disaster intelligence and life-critical emergency coordination, transient net
    - On network outage or FDSN service unavailability, `get_recent_earthquakes()` returns a structured fallback record marked with `is_simulated=True` and `event_type="service_unavailable"`.
    - `get_earthquake_summary()` returns `status="DATA_UNAVAILABLE"`, `is_simulated=True`, `data_available=False`, `max_magnitude=None`, and `has_recent_activity=None`, clearly distinguishing upstream outages from quiet seismic periods.
 
-7. **Uniform Graceful Degradation Across Connectors**:
+7. **Swiss Population & Building Exposure Resilience (`bfs_population.py`)**:
+   - `BfsPopulationClient` guards against malformed responses or register outages by catching `(requests.exceptions.RequestException, ValueError, KeyError)` (including `json.JSONDecodeError`).
+   - Defensively casts numeric attributes (`dplz4`, `gbauj`, `gastw`, `garea`) with per-field exception guards to prevent a single malformed register record from terminating entire building inventory queries.
+   - On failure, returns fallback records tagged with `is_simulated=True`, while `get_population_exposure_metrics()` sets `status="DATA_UNAVAILABLE"`, `is_simulated=True`, and `sample_buildings_analyzed=0` to ensure safe downstream degradation in Gemini agent reasoning loops.
+
+8. **Uniform Graceful Degradation Across Connectors**:
    - **Open-Meteo (`open_meteo.py`)**: Catches network/timeout exceptions and returns nominal geographic coordinates with `status="DATA_UNAVAILABLE"` and `is_simulated=True`.
    - **swisstopo (`swisstopo.py`)**: Reverts to nominal Zurich baseline elevation (408.0m) with `is_simulated=True` and `status="DATA_UNAVAILABLE"` on connection drop.
    - **MeteoSwiss Radar STAC (`meteoswiss_radar.py`)**: Returns fallback spatial metadata and empty asset lists with `status="DATA_UNAVAILABLE"`.
