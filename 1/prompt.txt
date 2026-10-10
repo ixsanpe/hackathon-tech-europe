@@ -1,0 +1,1 @@
+List the MCP tools available from entire-brain and call one of them to test.
