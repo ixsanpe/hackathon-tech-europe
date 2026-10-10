@@ -93,6 +93,8 @@ class FloodHazardClient:
         }
 
         is_in_flood_zone = False
+        data_available = True
+        status_msg = "NOMINAL"
         try:
             response = requests.get(
                 self.wms_base_url,
@@ -100,15 +102,30 @@ class FloodHazardClient:
                 timeout=self.timeout,
             )
             if response.status_code == 200:
-                data = response.json()
-                features = data.get("features", [])
-                if len(features) > 0:
-                    is_in_flood_zone = True
+                try:
+                    data = response.json()
+                    features = data.get("features", [])
+                    if len(features) > 0:
+                        is_in_flood_zone = True
+                except ValueError as json_err:
+                    logger.warning(f"Failed to parse WMS response as JSON: {json_err}")
+                    data_available = False
+                    status_msg = f"INVALID_JSON: {json_err}"
+            else:
+                logger.warning(
+                    f"WMS flood hazard query returned non-200 status {response.status_code}"
+                )
+                data_available = False
+                status_msg = f"HTTP_ERROR_{response.status_code}"
         except requests.exceptions.RequestException as e:
             logger.warning(f"Failed to query WMS flood hazard zone: {e}")
+            data_available = False
+            status_msg = f"NETWORK_ERROR: {e}"
 
         # Assess qualitative risk
-        if is_in_flood_zone:
+        if not data_available:
+            risk_level = "UNKNOWN"
+        elif is_in_flood_zone:
             if return_period <= 50:
                 risk_level = "HIGH"
             elif return_period <= 100:
@@ -137,6 +154,8 @@ class FloodHazardClient:
             geoportal_url=geoportal_url,
             wms_overlay_url=wms_overlay_url,
             source="BAFU_Aquaprotect",
+            data_available=data_available,
+            status=status_msg,
         )
 
         return hazard_info.to_dict()

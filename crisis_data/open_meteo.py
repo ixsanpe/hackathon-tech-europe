@@ -65,9 +65,25 @@ class OpenMeteoClient:
             "timezone": "UTC",
         }
 
-        response = requests.get(self.base_url, params=params, timeout=self.timeout)
-        response.raise_for_status()
-        data = response.json()
+        try:
+            response = requests.get(self.base_url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+        except (requests.RequestException, ValueError) as err:
+            logger.warning(f"Open-Meteo weather request failed: {err}")
+            return {
+                "source": "Open-Meteo",
+                "status": "DATA_UNAVAILABLE",
+                "is_simulated": True,
+                "error": str(err),
+                "coordinates": {"latitude": latitude, "longitude": longitude},
+                "elevation_m": 408.0,
+                "current_weather": {},
+                "units": {},
+                "total_24h_forecast_precip_mm": 0.0,
+                "hourly_forecast_preview": {},
+                "normalized_observations": [],
+            }
 
         # Parse current observations
         current = data.get("current", {})
@@ -120,6 +136,8 @@ class OpenMeteoClient:
 
         return {
             "source": "Open-Meteo",
+            "status": "NOMINAL",
+            "is_simulated": False,
             "coordinates": {"latitude": latitude, "longitude": longitude},
             "elevation_m": data.get("elevation"),
             "current_weather": current,

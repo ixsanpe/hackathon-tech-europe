@@ -114,7 +114,31 @@ The data layer exposes the following standardized functions for Gemini reasoning
 
 ---
 
-## 5. Next Planned Milestones
+## 5. Fail-Safe Mechanics & Graceful Degradation
+
+In disaster intelligence and life-critical emergency coordination, transient network outages or upstream governmental service failures must never be misrepresented as "all clear" or crash the reasoning loop. All CrisisOS data integrations adhere to strict fail-safe conventions:
+
+1. **Flood Hazard Zoning Fail-Safe (`flood_hazard.py`)**:
+   - If the external `geo.admin.ch` WMS service times out, is unreachable, or returns a non-200 HTTP code, `risk_level` is explicitly set to `"UNKNOWN"`, `data_available` to `False`, and `status` to an explanatory error code (e.g. `NETWORK_ERROR`, `HTTP_ERROR_503`). It never defaults to `is_in_flood_zone = False` or `risk_level = "NONE"`.
+
+2. **BAFU Hydrological Resilience (`bafu_hydro.py`)**:
+   - `BafuHydroClient.execute_graphql()` wraps network requests and JSON decoding in `try...except (requests.RequestException, ValueError, KeyError)`.
+   - On network or server failure, it returns a structured payload with error details. `get_river_measurements()` returns a degraded dictionary with `status="DATA_UNAVAILABLE"`, `data_available=False`, and zeroed counts, preventing unhandled exceptions from terminating Gemini tool-calling routines.
+
+3. **Federal Natural Hazard Alerts Resilience (`hazard_warnings.py`)**:
+   - `HazardWarningsClient` tracks `last_fetch_success` and `last_fetch_error`.
+   - If `natural-hazards.ch` is unreachable, `get_warning_summary()` sets `has_active_warnings = None`, `max_warning_level = None`, `max_warning_label = "Data Unavailable"`, and `status = "DATA_UNAVAILABLE"`, preventing upstream outages from falsely reporting "all clear / minor danger".
+
+4. **Uniform Graceful Degradation Across Connectors**:
+   - **Open-Meteo (`open_meteo.py`)**: Catches network/timeout exceptions and returns nominal geographic coordinates with `status="DATA_UNAVAILABLE"` and `is_simulated=True`.
+   - **swisstopo (`swisstopo.py`)**: Reverts to nominal Zurich baseline elevation (408.0m) with `is_simulated=True` and `status="DATA_UNAVAILABLE"` on connection drop.
+   - **MeteoSwiss Radar STAC (`meteoswiss_radar.py`)**: Returns fallback spatial metadata and empty asset lists with `status="DATA_UNAVAILABLE"`.
+   - **MeteoSwiss SwissMetNet SMN (`meteoswiss_smn.py`)**: Catches CSV download and parsing failures, returning station metadata with `status="DATA_UNAVAILABLE"`.
+   - **Windy Webcams (`windy_webcams.py`)**: Catches HTTP/network errors and falls back to curated reference cameras (`_get_fallback_zurich_cameras()`) and returns structured `status="ERROR"` on image fetch failure instead of raising unhandled exceptions.
+
+---
+
+## 6. Next Planned Milestones
 
 1. **Gemini Agent Multimodal Orchestration**:
    - Implement Gemini 2.5 Flash / Pro system prompt incorporating tools from [`crisis_data.agent_tools`](file:///Users/martinmaranon2/hackathon-tech-europe/crisis_data/agent_tools.py).

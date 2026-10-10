@@ -38,34 +38,37 @@ class BafuHydroClient:
     @log_function_call
     def execute_graphql(self, query: str, variables: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """
-        Execute an arbitrary GraphQL query against the BAFU endpoint.
+        Execute an arbitrary GraphQL query against the BAFU endpoint with error handling.
 
         Parameters:
             query: The GraphQL query string.
             variables: Optional dictionary of query variables.
 
         Returns:
-            JSON response payload as a dictionary.
+            JSON response payload as a dictionary, or fallback dict with 'errors' key on failure.
 
         Raises:
-            requests.RequestException: If the HTTP request fails.
-            ValueError: If GraphQL returns an error array.
+            Does not raise; returns errors in dictionary payload to prevent crashing callers.
         """
         payload: dict[str, Any] = {"query": query}
         if variables:
             payload["variables"] = variables
 
-        response = requests.post(
-            self.endpoint_url,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-            timeout=self.timeout
-        )
-        response.raise_for_status()
-        data = response.json()
-        if "errors" in data:
-            raise ValueError(f"BAFU GraphQL returned errors: {data['errors']}")
-        return data
+        try:
+            response = requests.post(
+                self.endpoint_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            data = response.json()
+            if "errors" in data:
+                logger.warning(f"BAFU GraphQL returned errors: {data['errors']}")
+            return data
+        except (requests.RequestException, ValueError, KeyError) as e:
+            logger.warning(f"BAFU GraphQL request failed: {e}")
+            return {"errors": [str(e)], "data": {}}
 
     @log_function_call
     def get_river_stations(
@@ -202,9 +205,24 @@ class BafuHydroClient:
             )
             normalized_obs.append(obs.to_dict())
 
+        if "errors" in result and not data_live:
+            error_msg = result["errors"][0] if result["errors"] else "Unknown BAFU error"
+            return {
+                "source": "BAFU",
+                "station_id": station_id,
+                "status": "DATA_UNAVAILABLE",
+                "data_available": False,
+                "error": str(error_msg),
+                "measurements_count": 0,
+                "latest_parameters": {},
+                "normalized_observations": [],
+            }
+
         return {
             "source": "BAFU",
             "station_id": station_id,
+            "status": "NOMINAL",
+            "data_available": True,
             "measurements_count": len(data_live),
             "latest_parameters": latest_by_param,
             "normalized_observations": normalized_obs,

@@ -64,6 +64,8 @@ class HazardWarningsClient:
         """
         self.timeout: int = timeout_seconds or Config.NATURAL_HAZARDS_TIMEOUT_SECONDS
         self.endpoint: str = Config.NATURAL_HAZARDS_PLZ_ENDPOINT
+        self.last_fetch_success: bool = True
+        self.last_fetch_error: Optional[str] = None
 
     @log_function_call
     def get_hazard_warnings(self, plz: str = Config.DEFAULT_ZURICH_PLZ) -> list[dict[str, Any]]:
@@ -88,6 +90,8 @@ class HazardWarningsClient:
         }
 
         warnings_list: list[dict[str, Any]] = []
+        self.last_fetch_success = False
+        self.last_fetch_error = None
         try:
             response = requests.get(
                 self.endpoint,
@@ -132,7 +136,11 @@ class HazardWarningsClient:
                 )
                 warnings_list.append(warning_item.to_dict())
 
-        except requests.exceptions.RequestException as e:
+            self.last_fetch_success = True
+
+        except (requests.exceptions.RequestException, ValueError) as e:
+            self.last_fetch_success = False
+            self.last_fetch_error = str(e)
             logger.error(f"Failed to retrieve hazard warnings for PLZ {clean_plz}: {e}")
 
         return warnings_list
@@ -149,11 +157,28 @@ class HazardWarningsClient:
             Dictionary with overall hazard level, count of warnings, and list of alerts.
         """
         warnings = self.get_hazard_warnings(plz=plz)
+
+        if not self.last_fetch_success:
+            return {
+                "plz": plz,
+                "status": "DATA_UNAVAILABLE",
+                "data_available": False,
+                "error": self.last_fetch_error,
+                "has_active_warnings": None,
+                "max_warning_level": None,
+                "max_warning_label": "Data Unavailable",
+                "warning_count": 0,
+                "warnings": [],
+                "portal_url": "https://www.natural-hazards.ch",
+            }
+
         max_level = max([w["warn_level"] for w in warnings], default=1)
         risk_label = WARN_LEVEL_DESCRIPTIONS.get(max_level, "Unknown")
 
         return {
             "plz": plz,
+            "status": "NOMINAL",
+            "data_available": True,
             "has_active_warnings": len(warnings) > 0 and max_level > 1,
             "max_warning_level": max_level,
             "max_warning_label": risk_label,

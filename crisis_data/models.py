@@ -145,11 +145,13 @@ class FloodHazardInfo:
     lv95_north: float
     is_in_flood_zone: bool
     return_period_years: int  # 50, 100, 250, 500
-    risk_level: str  # 'HIGH', 'MEDIUM', 'LOW', 'NONE'
+    risk_level: str  # 'HIGH', 'MEDIUM', 'LOW', 'NONE', 'UNKNOWN'
     layer_name: str
     geoportal_url: str
     wms_overlay_url: str
     source: str = "BAFU_Aquaprotect"
+    data_available: bool = True
+    status: str = "NOMINAL"
 
     def to_dict(self) -> dict[str, Any]:
         """Convert flood hazard info to dictionary."""

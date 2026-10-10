@@ -95,22 +95,45 @@ class MeteoSwissSMNClient:
         station_id_lower = station_id.lower()
         asset_url = f"{Config.METEOSWISS_SMN_ASSET_BASE}/{station_id_lower}/ogd-smn_{station_id_lower}_t_now.csv"
 
-        response = requests.get(asset_url, timeout=self.timeout)
-        response.raise_for_status()
+        station_meta = self.KNOWN_ZURICH_STATIONS.get(station_id_lower, {
+            "latitude": Config.ZURICH_LAT,
+            "longitude": Config.ZURICH_LON,
+            "elevation_m": 450,
+            "name": f"Station {station_id}",
+        })
 
-        # Parse CSV with semicolon delimiter
-        content = response.content.decode("utf-8", errors="replace")
-        lines = [line.strip() for line in content.splitlines() if line.strip()]
-        if len(lines) < 2:
-            raise ValueError(f"No observation data rows in asset for station {station_id}")
+        try:
+            response = requests.get(asset_url, timeout=self.timeout)
+            response.raise_for_status()
 
-        reader = csv.DictReader(lines, delimiter=";")
-        rows = list(reader)
-        if not rows:
-            raise ValueError(f"Empty data rows in CSV for station {station_id}")
+            # Parse CSV with semicolon delimiter
+            content = response.content.decode("utf-8", errors="replace")
+            lines = [line.strip() for line in content.splitlines() if line.strip()]
+            if len(lines) < 2:
+                raise ValueError(f"No observation data rows in asset for station {station_id}")
 
-        latest_row = rows[-1]  # Most recent 10-minute record
-        ref_timestamp = latest_row.get("reference_timestamp", "")
+            reader = csv.DictReader(lines, delimiter=";")
+            rows = list(reader)
+            if not rows:
+                raise ValueError(f"Empty data rows in CSV for station {station_id}")
+
+            latest_row = rows[-1]  # Most recent 10-minute record
+            ref_timestamp = latest_row.get("reference_timestamp", "")
+            is_simulated = False
+            status = "NOMINAL"
+        except (requests.RequestException, ValueError) as err:
+            logger.warning(f"Failed to fetch or parse MeteoSwiss SMN data for {station_id}: {err}")
+            return {
+                "source": "MeteoSwiss",
+                "status": "DATA_UNAVAILABLE",
+                "is_simulated": True,
+                "error": str(err),
+                "station": station_meta,
+                "timestamp": current_utc_iso(),
+                "raw_measurements": {},
+                "normalized_observations": [],
+                "retrieved_at": current_utc_iso(),
+            }
 
         # Key parameters according to MeteoSwiss SwissMetNet documentation:
         # tre200s0: Air temperature 2 m above ground (°C)
@@ -119,12 +142,6 @@ class MeteoSwissSMNClient:
         # fkl010z0: Mean wind speed 10 m (m/s)
         # dkl010z0: Wind direction 10 m (°)
         # prestas0: Station pressure (hPa)
-        station_meta = self.KNOWN_ZURICH_STATIONS.get(station_id_lower, {
-            "latitude": Config.ZURICH_LAT,
-            "longitude": Config.ZURICH_LON,
-            "elevation_m": 450,
-            "name": f"Station {station_id}",
-        })
 
         def safe_float(v: Optional[str]) -> Optional[float]:
             try:
@@ -179,6 +196,8 @@ class MeteoSwissSMNClient:
 
         return {
             "source": "MeteoSwiss",
+            "status": "NOMINAL",
+            "is_simulated": False,
             "station": station_meta,
             "timestamp": ref_timestamp,
             "raw_measurements": {

@@ -49,9 +49,26 @@ class MeteoSwissRadarClient:
             and HDF5 asset download references.
         """
         items_url = f"{self.stac_url}/items?limit={limit}"
-        response = requests.get(items_url, timeout=self.timeout)
-        response.raise_for_status()
-        data = response.json()
+        try:
+            response = requests.get(items_url, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+        except (requests.RequestException, ValueError) as e:
+            logger.warning(f"Failed to fetch MeteoSwiss radar STAC items: {e}")
+            return {
+                "source": "MeteoSwiss Radar",
+                "status": "DATA_UNAVAILABLE",
+                "is_simulated": True,
+                "error": str(e),
+                "collection_id": "ch.meteoschweiz.ogd-radar-precip",
+                "spatial_coverage": "Switzerland (Alps & Plateau)",
+                "bounding_box_wgs84": [5.96, 45.82, 10.49, 47.81],
+                "latest_item_id": None,
+                "latest_update": None,
+                "format": "HDF5 (.h5)",
+                "retrieved_at": current_utc_iso(),
+                "items": [],
+            }
 
         features = data.get("features", [])
         if not features:

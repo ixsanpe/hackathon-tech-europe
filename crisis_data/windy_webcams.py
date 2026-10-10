@@ -87,12 +87,17 @@ class WindyWebcamsClient:
             "limit": limit,
         }
 
-        response = requests.get(self.base_url, headers=headers, params=params, timeout=self.timeout)
-        if response.status_code in (401, 403):
-            raise PermissionError(f"Windy API authentication failed (HTTP {response.status_code}). Check WINDY_API_KEY.")
-        response.raise_for_status()
+        try:
+            response = requests.get(self.base_url, headers=headers, params=params, timeout=self.timeout)
+            if response.status_code in (401, 403):
+                logger.warning(f"Windy API authentication failed (HTTP {response.status_code}). Using fallback cameras.")
+                return self._get_fallback_zurich_cameras()
+            response.raise_for_status()
+            data = response.json()
+        except (requests.RequestException, ValueError) as e:
+            logger.warning(f"Windy API request failed: {e}. Using fallback cameras.")
+            return self._get_fallback_zurich_cameras()
 
-        data = response.json()
         webcams = data.get("webcams", [])
 
         results: list[dict[str, Any]] = []
@@ -134,9 +139,6 @@ class WindyWebcamsClient:
 
         Returns:
             Dictionary containing image metadata, mime_type, and raw image bytes.
-
-        Raises:
-            ValueError: If the camera cannot be resolved or image URL is missing.
         """
         # First retrieve camera metadata
         if not self.is_configured():
@@ -150,29 +152,44 @@ class WindyWebcamsClient:
 
         headers = {"x-windy-api-key": self.api_key, "Accept": "application/json"}  # type: ignore
         url = f"{self.base_url}/{camera_id}?include=images,location"
-        response = requests.get(url, headers=headers, timeout=self.timeout)
-        response.raise_for_status()
-        cam = response.json()
+        try:
+            response = requests.get(url, headers=headers, timeout=self.timeout)
+            response.raise_for_status()
+            cam = response.json()
 
-        images = cam.get("images", {})
-        image_url = images.get("current", {}).get("preview") or images.get("daylight", {}).get("preview")
+            images = cam.get("images", {})
+            image_url = images.get("current", {}).get("preview") or images.get("daylight", {}).get("preview")
 
-        if not image_url:
-            raise ValueError(f"No valid image URL found for camera {camera_id}")
+            if not image_url:
+                return {
+                    "camera_id": camera_id,
+                    "status": "NO_IMAGE_URL",
+                    "message": f"No valid image URL found for camera {camera_id}",
+                    "image_bytes": None,
+                }
 
-        # Fetch image bytes
-        img_res = requests.get(image_url, timeout=self.timeout)
-        img_res.raise_for_status()
+            # Fetch image bytes
+            img_res = requests.get(image_url, timeout=self.timeout)
+            img_res.raise_for_status()
 
-        return {
-            "camera_id": camera_id,
-            "title": cam.get("title"),
-            "image_url": image_url,
-            "content_type": img_res.headers.get("Content-Type", "image/jpeg"),
-            "image_bytes": img_res.content,
-            "byte_count": len(img_res.content),
-            "retrieved_at": datetime.now(timezone.utc).isoformat(),
-        }
+            return {
+                "camera_id": camera_id,
+                "status": "NOMINAL",
+                "title": cam.get("title"),
+                "image_url": image_url,
+                "content_type": img_res.headers.get("Content-Type", "image/jpeg"),
+                "image_bytes": img_res.content,
+                "byte_count": len(img_res.content),
+                "retrieved_at": datetime.now(timezone.utc).isoformat(),
+            }
+        except (requests.RequestException, ValueError) as e:
+            logger.warning(f"Failed to fetch image for webcam {camera_id}: {e}")
+            return {
+                "camera_id": camera_id,
+                "status": "ERROR",
+                "message": str(e),
+                "image_bytes": None,
+            }
 
     def _get_fallback_zurich_cameras(self) -> list[dict[str, Any]]:
         """

@@ -131,13 +131,23 @@ class SwisstopoClient:
         params = {"easting": str(int(easting)), "northing": str(int(northing))}
         url = Config.SWISSTOPO_HEIGHT_URL
 
-        response = requests.get(url, params=params, timeout=self.timeout)
-        response.raise_for_status()
-        data = response.json()
+        try:
+            response = requests.get(url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+            height_val = float(data.get("height", 0.0))
+            is_simulated = False
+            status = "NOMINAL"
+        except (requests.RequestException, ValueError) as e:
+            logger.warning(f"Failed to query swisstopo elevation: {e}. Using nominal fallback.")
+            height_val = 408.0
+            is_simulated = True
+            status = "DATA_UNAVAILABLE"
 
-        height_val = float(data.get("height", 0.0))
         return {
             "source": "swisstopo",
+            "status": status,
+            "is_simulated": is_simulated,
             "coordinates_wgs84": {"latitude": latitude, "longitude": longitude},
             "coordinates_lv95": {"easting": easting, "northing": northing},
             "elevation_m": height_val,
