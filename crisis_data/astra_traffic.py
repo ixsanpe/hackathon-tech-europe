@@ -15,6 +15,7 @@ Use Cases:
 2. Estimating delays and traffic obstructions affecting emergency service response times.
 3. Supplying traffic situation data to the Gemini reasoning agent to plan safe dispatch routes.
 4. Providing graceful fallback when the opentransportdata.swiss API key is not configured.
+5. Providing degraded fallback incident structures when XML parsing or upstream network feeds fail.
 """
 
 import xml.etree.ElementTree as ET
@@ -137,7 +138,7 @@ class AstraTrafficClient:
             road_filter: Optional road identifier filter.
 
         Returns:
-            List of parsed and normalized incident records.
+            List of parsed and normalized incident records, or a fallback simulated record on XML parse error.
         """
         incidents: list[dict[str, Any]] = []
         try:
@@ -188,6 +189,20 @@ class AstraTrafficClient:
                 incidents.append(incident.to_dict())
         except ET.ParseError as pe:
             logger.error(f"Failed to parse ASTRA DATEX II XML: {pe}")
+            fallback_incident = TrafficIncident(
+                incident_id="astra-xml-parse-error",
+                road_number=road_filter or "UNKNOWN",
+                direction=None,
+                incident_type="xml_parse_error",
+                description=f"Failed to parse ASTRA DATEX II XML payload: {pe}",
+                location=None,
+                is_closed=False,
+                delay_minutes=None,
+                updated_at=current_utc_iso(),
+                source="ASTRA_FEDRO",
+                is_simulated=True,
+            )
+            return [fallback_incident.to_dict()]
 
         return incidents
 

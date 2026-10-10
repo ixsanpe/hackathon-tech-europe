@@ -129,7 +129,20 @@ In disaster intelligence and life-critical emergency coordination, transient net
    - `HazardWarningsClient` tracks `last_fetch_success` and `last_fetch_error`.
    - If `natural-hazards.ch` is unreachable, `get_warning_summary()` sets `has_active_warnings = None`, `max_warning_level = None`, `max_warning_label = "Data Unavailable"`, and `status = "DATA_UNAVAILABLE"`, preventing upstream outages from falsely reporting "all clear / minor danger".
 
-4. **Uniform Graceful Degradation Across Connectors**:
+4. **OpenStreetMap Overpass Resilience (`osm_infrastructure.py`)**:
+   - `OverpassInfrastructureClient.get_nearby_infrastructure()` cycles across 4 public Overpass mirrors with timeout protection.
+   - If all mirrors fail or return malformed JSON, rather than crashing downstream Gemini tool calling with an unhandled exception, it gracefully degrades to `_get_fallback_infrastructure()`, returning curated critical infrastructure in Zurich (USZ Hospital, Triemli, Berufsfeuerwehr Süd, Neugasse, Quaibrücke, Münsterbrücke) tagged with `is_simulated=True` and `source="OpenStreetMap (Fallback)"`.
+
+5. **ASTRA Road Traffic Incident Resilience (`astra_traffic.py`)**:
+   - Catches `ET.ParseError` during DATEX II XML parsing and returns a structured fallback `TrafficIncident` record with `is_simulated=True` and `incident_type="xml_parse_error"`, preventing malformed XML payloads from silently appearing as "zero incidents / roads clear".
+   - Handles network and authorization failures by returning structured incidents with `is_simulated=True`.
+
+6. **ETH Swiss Seismological Service Resilience (`sed_earthquakes.py`)**:
+   - `SedEarthquakeClient` tracks `last_fetch_success` and `last_fetch_error`.
+   - On network outage or FDSN service unavailability, `get_recent_earthquakes()` returns a structured fallback record marked with `is_simulated=True` and `event_type="service_unavailable"`.
+   - `get_earthquake_summary()` returns `status="DATA_UNAVAILABLE"`, `is_simulated=True`, `data_available=False`, `max_magnitude=None`, and `has_recent_activity=None`, clearly distinguishing upstream outages from quiet seismic periods.
+
+7. **Uniform Graceful Degradation Across Connectors**:
    - **Open-Meteo (`open_meteo.py`)**: Catches network/timeout exceptions and returns nominal geographic coordinates with `status="DATA_UNAVAILABLE"` and `is_simulated=True`.
    - **swisstopo (`swisstopo.py`)**: Reverts to nominal Zurich baseline elevation (408.0m) with `is_simulated=True` and `status="DATA_UNAVAILABLE"` on connection drop.
    - **MeteoSwiss Radar STAC (`meteoswiss_radar.py`)**: Returns fallback spatial metadata and empty asset lists with `status="DATA_UNAVAILABLE"`.

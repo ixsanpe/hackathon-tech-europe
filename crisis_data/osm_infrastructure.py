@@ -10,6 +10,7 @@ Use Cases:
 2. Locating fire stations (Feuerwehr depots) and rescue services (Schutz & Rettung Zürich).
 3. Mapping bridges crossing the Sihl and Limmat rivers to assess flood vulnerability and closure risks.
 4. Caching infrastructure queries in memory to prevent exceeding Overpass API public rate limits.
+5. Providing high-availability fallback infrastructure (USZ, Triemli, Berufsfeuerwehr, key bridges) if Overpass mirrors are unavailable.
 """
 
 import time
@@ -129,11 +130,22 @@ class OverpassInfrastructureClient:
                 continue
 
         if response is None or response.status_code != 200:
-            if last_error:
-                raise last_error
-            raise requests.RequestException("All Overpass endpoints failed")
+            logger.warning(
+                f"All Overpass mirrors failed ({last_error}). Returning curated fallback emergency infrastructure."
+            )
+            fallback_items = self._get_fallback_infrastructure(categories=categories)
+            self._cache[cache_key] = (now, fallback_items)
+            return fallback_items
 
-        data = response.json()
+        try:
+            data = response.json()
+        except (ValueError, requests.RequestException) as parse_err:
+            logger.warning(
+                f"Failed to parse Overpass JSON response: {parse_err}. Returning fallback infrastructure."
+            )
+            fallback_items = self._get_fallback_infrastructure(categories=categories)
+            self._cache[cache_key] = (now, fallback_items)
+            return fallback_items
 
         elements = data.get("elements", [])
         items: list[dict[str, Any]] = []
@@ -169,12 +181,88 @@ class OverpassInfrastructureClient:
                 location={"latitude": lat, "longitude": lon},
                 tags={k: str(v) for k, v in tags.items() if k in ["name", "amenity", "bridge", "operator", "addr:street", "addr:city"]},
                 source="OpenStreetMap",
+                is_simulated=False,
             )
             items.append(infra.to_dict())
 
         # Update cache
         self._cache[cache_key] = (now, items)
         return items
+
+    def _get_fallback_infrastructure(
+        self,
+        categories: Optional[list[str]] = None
+    ) -> list[dict[str, Any]]:
+        """
+        Provide structured fallback critical infrastructure around Zurich when Overpass mirrors are down.
+
+        This ensures emergency triage agents receive vital emergency locations (major hospital hubs,
+        fire depots, primary river crossing bridges) even during upstream network or Overpass outages.
+
+        Parameters:
+            categories: Optional filter list of infrastructure categories ('hospital', 'fire_station', 'bridge').
+
+        Returns:
+            List of fallback infrastructure items marked with is_simulated=True.
+        """
+        target_cats = set(categories) if categories else {"hospital", "fire_station", "bridge"}
+        curated_items = [
+            InfrastructureItem(
+                id="osm_fallback_hospital_usz",
+                name="Universitätsspital Zürich (USZ)",
+                category="hospital",
+                location={"latitude": 47.3768, "longitude": 8.5492},
+                tags={"amenity": "hospital", "emergency": "yes", "name": "Universitätsspital Zürich (USZ)"},
+                source="OpenStreetMap (Fallback)",
+                is_simulated=True,
+            ),
+            InfrastructureItem(
+                id="osm_fallback_hospital_triemli",
+                name="Stadtspital Triemli",
+                category="hospital",
+                location={"latitude": 47.3653, "longitude": 8.4984},
+                tags={"amenity": "hospital", "emergency": "yes", "name": "Stadtspital Triemli"},
+                source="OpenStreetMap (Fallback)",
+                is_simulated=True,
+            ),
+            InfrastructureItem(
+                id="osm_fallback_fire_station_sued",
+                name="Berufsfeuerwehr Zürich (Wache Süd)",
+                category="fire_station",
+                location={"latitude": 47.3621, "longitude": 8.5284},
+                tags={"amenity": "fire_station", "operator": "Schutz & Rettung Zürich", "name": "Berufsfeuerwehr Zürich (Wache Süd)"},
+                source="OpenStreetMap (Fallback)",
+                is_simulated=True,
+            ),
+            InfrastructureItem(
+                id="osm_fallback_fire_station_neugasse",
+                name="Schutz & Rettung Zürich (Wache Neugasse)",
+                category="fire_station",
+                location={"latitude": 47.3828, "longitude": 8.5298},
+                tags={"amenity": "fire_station", "operator": "Schutz & Rettung Zürich", "name": "Schutz & Rettung Zürich (Wache Neugasse)"},
+                source="OpenStreetMap (Fallback)",
+                is_simulated=True,
+            ),
+            InfrastructureItem(
+                id="osm_fallback_bridge_quaibruecke",
+                name="Quaibrücke (Lake Zurich / Limmat Outlet)",
+                category="bridge",
+                location={"latitude": 47.3667, "longitude": 8.5433},
+                tags={"bridge": "yes", "highway": "primary", "name": "Quaibrücke"},
+                source="OpenStreetMap (Fallback)",
+                is_simulated=True,
+            ),
+            InfrastructureItem(
+                id="osm_fallback_bridge_muensterbruecke",
+                name="Münsterbrücke (Limmat River)",
+                category="bridge",
+                location={"latitude": 47.3697, "longitude": 8.5428},
+                tags={"bridge": "yes", "highway": "pedestrian", "name": "Münsterbrücke"},
+                source="OpenStreetMap (Fallback)",
+                is_simulated=True,
+            ),
+        ]
+        return [item.to_dict() for item in curated_items if item.category in target_cats]
 
 
 # Module singleton instance

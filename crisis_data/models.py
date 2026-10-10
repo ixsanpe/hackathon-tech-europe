@@ -94,6 +94,7 @@ class InfrastructureItem:
     location: dict[str, float]
     tags: dict[str, str] = field(default_factory=dict)
     source: str = "OpenStreetMap"
+    is_simulated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert infrastructure item to dictionary."""
@@ -191,6 +192,7 @@ class EarthquakeEvent:
     location_name: str
     event_type: str  # e.g., 'earthquake', 'quarry blast', 'explosion'
     source: str = "SED_ETHZ"
+    is_simulated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert earthquake event to dictionary."""

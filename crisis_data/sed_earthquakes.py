@@ -15,8 +15,10 @@ Use Cases:
 2. Filtering events by minimum magnitude (e.g. M >= 1.0) and geographic proximity.
 3. Supplying magnitude, focal depth, event type (natural earthquake vs quarry blast), and timestamps to Gemini.
 4. Providing real-time event status and catalog freshness.
+5. Providing explicit DATA_UNAVAILABLE status flags and simulated fallback events during network or SED outages.
 """
 
+from datetime import datetime, timezone
 from typing import Any, Optional
 import requests
 
@@ -37,6 +39,8 @@ class SedEarthquakeClient:
         """
         self.timeout: int = timeout_seconds or Config.SED_TIMEOUT_SECONDS
         self.endpoint: str = Config.SED_FDSN_URL
+        self.last_fetch_success: bool = True
+        self.last_fetch_error: Optional[str] = None
 
     @log_function_call
     def get_recent_earthquakes(
@@ -70,6 +74,8 @@ class SedEarthquakeClient:
             params["maxlongitude"] = 10.50
 
         events: list[dict[str, Any]] = []
+        self.last_fetch_success = False
+        self.last_fetch_error = None
         try:
             response = requests.get(
                 self.endpoint,
@@ -78,8 +84,25 @@ class SedEarthquakeClient:
             )
             response.raise_for_status()
             events = self._parse_fdsn_text(response.text)
+            self.last_fetch_success = True
         except requests.exceptions.RequestException as e:
+            self.last_fetch_success = False
+            self.last_fetch_error = str(e)
             logger.error(f"Error retrieving earthquakes from SED ETHZ: {e}")
+            fallback_event = EarthquakeEvent(
+                event_id="sed-error-fallback",
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                latitude=Config.ZURICH_LAT,
+                longitude=Config.ZURICH_LON,
+                depth_km=0.0,
+                magnitude=0.0,
+                magnitude_type="ML",
+                location_name="SED Data Service Unavailable (Fallback)",
+                event_type="service_unavailable",
+                source="SED_ETHZ",
+                is_simulated=True,
+            )
+            return [fallback_event.to_dict()]
 
         return events
 
@@ -130,6 +153,7 @@ class SedEarthquakeClient:
                     location_name=location_name,
                     event_type=event_type,
                     source="SED_ETHZ",
+                    is_simulated=False,
                 )
                 events.append(event.to_dict())
             except (ValueError, IndexError) as pe:
@@ -143,15 +167,36 @@ class SedEarthquakeClient:
         Generate a concise summary of recent seismic activity in Switzerland.
 
         Returns:
-            Summary dictionary with total events, max magnitude, and latest event details.
+            Summary dictionary with total events, max magnitude, status, and latest event details.
         """
         events = self.get_recent_earthquakes(min_magnitude=0.5, limit=10, swiss_only=True)
+
+        if not self.last_fetch_success:
+            return {
+                "status": "DATA_UNAVAILABLE",
+                "is_simulated": True,
+                "data_available": False,
+                "error": self.last_fetch_error,
+                "has_recent_activity": None,
+                "total_events_retrieved": 0,
+                "max_magnitude": None,
+                "max_magnitude_description": "Data Unavailable",
+                "latest_event": None,
+                "events": events,
+                "sed_portal": "http://www.seismo.ethz.ch",
+            }
+
         max_mag = max([e["magnitude"] for e in events], default=0.0)
         latest = events[0] if events else None
 
         return {
+            "status": "NOMINAL",
+            "is_simulated": False,
+            "data_available": True,
+            "has_recent_activity": len(events) > 0,
             "total_events_retrieved": len(events),
             "max_magnitude": max_mag,
+            "max_magnitude_description": f"M{max_mag}" if events else "No events",
             "latest_event": latest,
             "events": events,
             "sed_portal": "http://www.seismo.ethz.ch",
