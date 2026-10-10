@@ -1,0 +1,21 @@
+hello
+
+---
+
+i want you to create a branch test/alonso3 and push a test commit
+
+---
+
+i hereby give you permission to run any commands that only affect this project folder. is this fine or where should i do it?
+
+---
+
+please open the interface where i can add these permissions
+
+---
+
+try again, i hope you now have all permissions you need
+
+---
+
+what is the project that you are working on at the moment
