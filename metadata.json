@@ -1,0 +1,29 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4K5E76J53GQ165KPWP8XYKE",
+  "strategy": "manual-commit",
+  "branch": "swiss-disaster-data-integrations-12-sources",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "Design.md",
+    "crisis_data/astra_traffic.py",
+    "crisis_data/models.py",
+    "crisis_data/osm_infrastructure.py",
+    "crisis_data/sed_earthquakes.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 15078,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 3669457,
+    "output_tokens": 4310,
+    "api_call_count": 41
+  }
+}
