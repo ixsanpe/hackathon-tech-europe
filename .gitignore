@@ -18,7 +18,3 @@ __pycache__/
 # OS artifacts
 .DS_Store
 Thumbs.db
-
-.env
-__pycache__/
-*.pyc
