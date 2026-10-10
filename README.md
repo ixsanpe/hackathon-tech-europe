@@ -10,4 +10,3 @@ This repository uses Entire to link AI coding sessions, prompts, and context dir
 
 - [Architecture Diagram (Google Drive)](https://drive.google.com/file/d/1DTmGxwnCslS5hmaFK8Z8PrWeHEGtHJpX/view?usp=drive_link)
 - [Technical Setup & System Design Document](docs/architecture-emergency-assistant.md)
-

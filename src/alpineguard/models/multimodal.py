@@ -37,7 +37,7 @@ class MultimodalGenerationPipeline:
         )
 
         media_url = f"https://cdn.alpineguard.ch/maps/{artifact_id}.svg"
-        
+
         return MultimodalArtifact(
             artifact_id=artifact_id,
             incident_id=incident_id,
@@ -66,7 +66,7 @@ class MultimodalGenerationPipeline:
         the visible landmarks, mountain ridge trail, and approach to safety.
         """
         artifact_id = f"veo3-{uuid.uuid4().hex[:8]}"
-        
+
         prompt = (
             f"Cinematic FPV drone flythrough following safe alpine mountain ridge escape route in Swiss Alps. "
             f"Conditions: {weather_conditions}. "
@@ -103,7 +103,7 @@ class MultimodalGenerationPipeline:
         Generate Imagen 3 tactical helicopter landing zone (LZ) schematic for Swiss Air-Rescue (Rega).
         """
         artifact_id = f"imagen3-{uuid.uuid4().hex[:8]}"
-        
+
         prompt = (
             f"Technical tactical aerial schematic for Rega emergency helicopter landing zone at {landing_zone_name} (elevation {coordinates.altitude_m}m). "
             f"Showing wind direction indicator, approach path free of cables/pylons, 25m diameter flat snow clearing, "

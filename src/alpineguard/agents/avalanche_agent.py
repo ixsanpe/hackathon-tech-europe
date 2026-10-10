@@ -20,7 +20,7 @@ class AvalancheSurveillanceAgent:
         """
         slf_data = SwissEnvironmentalConnectors.get_slf_bulletin(canton, location)
         webcams = SwissEnvironmentalConnectors.get_cantonal_webcams(canton, location)
-        
+
         # Vision Assessment Simulation (Gemini Vision analysis of webcam frames)
         vision_findings = []
         avalanche_detected = False
