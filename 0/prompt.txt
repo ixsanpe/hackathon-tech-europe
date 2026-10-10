@@ -1,0 +1,5 @@
+can you accept all commands in this project?
+
+---
+
+can you push a commit in a markdown file that contains this link to the diagram: https://drive.google.com/file/d/REDACTED/view?usp=drive_link
