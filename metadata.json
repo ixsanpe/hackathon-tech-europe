@@ -1,0 +1,19 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4JQPJGA1CAGVN8R1MEZTXXN",
+  "strategy": "manual-commit",
+  "branch": "docs/architecture-diagram",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "README.md",
+    "docs/architecture-emergency-assistant.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+no you nee dto upload it to entire
+
+---
+
+what is going on
+
+---
+
+okay based on th ediagram and the idea tha ti paste here can you come up with a tech setup where we define the following for an emergency platform assistant based in switzerland: 1. ui interface for users, 2. different workflows for agents that will autonomous respond to the emergency (ie, create evacuation route, avalanche survellience...) these agents will call different models for generating videos, images.. whatever you can think of. 3. database with users and status and all data sources api etc 4. layer for connections and toosl (ie, database that my teammate is developing). the ui will also have some agentic capabilities with gradium a n autonomous voice assistan or google real time. design this and plan all steps that we need in our tech setup
+
+---
+
+okay based on th ediagram and the idea tha ti paste here can you come up with a tech setup where we define the following for an emergency platform assistant based in switzerland: 1. ui interface for users, 2.
+  different workflows for agents that will autonomous respond to the emergency (ie, create evacuation route, avalanche survellience...) these agents will call different models for generating videos, images..
+  whatever you can think of. 3. database with users and status and all data sources api etc 4. layer for connections and toosl (ie, database that my teammate is developing). the ui will also have some agentic
+  capabilities with gradium a n autonomous voice assistan or google real time. design this and plan all steps that we need in our tech setup. upload it to the branch in entire
+
+---
+
+/goal
