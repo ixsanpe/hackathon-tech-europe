@@ -1,0 +1,65 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4K4GMDZS5R8C6Z2SNKN1YTH",
+  "session_id": "bb4f87fb-6c99-499a-a633-5cff44e74da6",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-10T14:47:16.492826Z",
+  "branch": "feat/data-integration",
+  "checkpoints_count": 2,
+  "save_step_count": 1,
+  "files_touched": [
+    "Design.md",
+    "crisis_data/bafu_hydro.py",
+    "crisis_data/flood_hazard.py",
+    "crisis_data/hazard_warnings.py",
+    "crisis_data/meteoswiss_radar.py",
+    "crisis_data/meteoswiss_smn.py",
+    "crisis_data/models.py",
+    "crisis_data/open_meteo.py",
+    "crisis_data/swisstopo.py",
+    "crisis_data/windy_webcams.py"
+  ],
+  "agent": "Antigravity",
+  "model": "",
+  "turn_id": "64e4fff2bc67",
+  "checkpoint_transcript_start": 98,
+  "transcript_lines_at_start": 98,
+  "token_usage": {
+    "input_tokens": 36309,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 11167679,
+    "output_tokens": 39042,
+    "api_call_count": 156
+  },
+  "session_metrics": {
+    "turn_count": 8
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-10T14:47:16.475202Z",
+    "agent_lines": 248,
+    "agent_removed": 79,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 248,
+    "total_lines_changed": 327,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 248,
+      "agent_lines_removed": 79
+    }
+  ]
+}
