@@ -1,0 +1,60 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4JV80ANS89FC8N0QTPYGFYZ",
+  "session_id": "3c03ecf5-2db8-475c-9860-508b333b13dc",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-10T12:05:30.718558Z",
+  "branch": "feat/agents-phase-2-3",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "demo_simulation.py",
+    "src/alpineguard/__init__.py",
+    "src/alpineguard/agents/avalanche_agent.py",
+    "src/alpineguard/agents/evacuation_agent.py",
+    "src/alpineguard/agents/supervisor_agent.py",
+    "src/alpineguard/connectors/swiss_data.py",
+    "src/alpineguard/models/domain.py",
+    "src/alpineguard/models/multimodal.py",
+    "tests/test_agents.py"
+  ],
+  "agent": "Antigravity",
+  "model": "",
+  "turn_id": "11452cf5b866",
+  "checkpoint_transcript_start": 143,
+  "transcript_lines_at_start": 143,
+  "session_metrics": {
+    "turn_count": 3
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-10T12:05:30.712872Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 0,
+    "total_lines_changed": 0,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 819,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "demo_simulation.py": 75,
+        "src/alpineguard/__init__.py": 22,
+        "src/alpineguard/agents/avalanche_agent.py": 71,
+        "src/alpineguard/agents/evacuation_agent.py": 94,
+        "src/alpineguard/agents/supervisor_agent.py": 127,
+        "src/alpineguard/connectors/swiss_data.py": 77,
+        "src/alpineguard/models/domain.py": 132,
+        "src/alpineguard/models/multimodal.py": 126,
+        "tests/test_agents.py": 95
+      }
+    }
+  ]
+}

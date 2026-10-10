@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4JV80ANS89FC8N0QTPYGFYZ",
+  "strategy": "manual-commit",
+  "branch": "feat/agents-phase-2-3",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "demo_simulation.py",
+    "src/alpineguard/__init__.py",
+    "src/alpineguard/agents/avalanche_agent.py",
+    "src/alpineguard/agents/evacuation_agent.py",
+    "src/alpineguard/agents/supervisor_agent.py",
+    "src/alpineguard/connectors/swiss_data.py",
+    "src/alpineguard/models/domain.py",
+    "src/alpineguard/models/multimodal.py",
+    "tests/test_agents.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ]
+}
