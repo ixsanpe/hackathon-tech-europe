@@ -1,0 +1,1 @@
+Call the MCP tool brain_get_graph_schema and report the result.
