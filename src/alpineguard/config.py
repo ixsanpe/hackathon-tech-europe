@@ -36,7 +36,8 @@ class Config:
     GEMINI_API_KEY_ENV: str = "GEMINI_API_KEY"
     BACKGROUND_AGENT_MODEL: str = os.getenv("ALPINEGUARD_BACKGROUND_MODEL", "gemini-3.8-flash")
     VISION_MODEL: str = os.getenv("ALPINEGUARD_VISION_MODEL", "gemini-3.8-flash")
-    VOICE_AGENT_MODEL: str = os.getenv("ALPINEGUARD_VOICE_MODEL", "gemini-3.8-live")  # Phase 4, not used yet
+    VOICE_AGENT_MODEL: str = os.getenv("ALPINEGUARD_VOICE_MODEL", "gemini-3.8-live")
+    VOICE_AUDIO_SAMPLE_RATE: int = 24000  # Live API audio output: 16-bit mono PCM
     BACKGROUND_AGENT_MAX_TURNS: int = 24
 
     # --------------------------------------------------------------------------

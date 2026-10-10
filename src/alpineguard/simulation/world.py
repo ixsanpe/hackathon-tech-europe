@@ -88,6 +88,7 @@ class SimulatedWorld:
         self.canton: str = data["canton"]
         self.data_note: str = data.get("data_note", "")
         self.operator_goal: str = data["operator_goal"]
+        self.voice_script: List[Dict[str, str]] = list(data.get("voice_script", []))
         self.trigger_call_ids: List[str] = list(
             data.get("trigger_call_ids", [c["call_id"] for c in data.get("calls", [])])
         )
