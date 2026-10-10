@@ -10,7 +10,7 @@ from alpineguard import (
 
 def run_simulation():
     print("=" * 80)
-    print("ALPINEGUARD: AUTONOMOUS EMERGENCY DISPATCH SIMULATION (SWITZERLAND)")
+    print("ALPINEGUARD: EMERGENCY DISPATCH SIMULATION WITH 112 OPERATOR APPROVAL (SWITZERLAND)")
     print("=" * 80)
 
     supervisor = SupervisorDispatcherAgent()
@@ -65,9 +65,19 @@ def run_simulation():
             print(f"    Preview: Embedded vector SVG ready for offline PWA cache")
 
     print("\n" + "-" * 50)
-    print("[FIRST RESPONDERS DISPATCH (112 / REGA)]")
-    print(f"Units Alerted: {', '.join(summary['dispatcher_112_console']['recommended_unit_dispatch'])}")
+    print("[PENDING APPROVALS FOR THE 112 OPERATOR]")
+    for action in result["pending_approvals"]:
+        print(f"  • {action['action_id']}: {action['summary']}")
+        print(f"    Reason: {action['reason']}")
+    print(f"Recommended units: {', '.join(summary['dispatcher_112_console']['recommended_unit_dispatch'])}")
     print(f"Rega LZ Tactical Briefing: {summary['dispatcher_112_console']['rega_lz_briefing_url']}")
+
+    print("\n" + "-" * 50)
+    print("[112 OPERATOR DECISION] (simulated: the demo operator approves both actions)")
+    for action_id in summary["dispatcher_112_console"]["pending_action_ids"]:
+        decided = supervisor.approvals.approve(action_id, operator_id="demo-operator")
+        print(f"  • {action_id}: {decided.status.value} -> {decided.result}")
+    print(f"Incident status after approval: {incident.status.value.upper()}")
     print("=" * 80)
     print("SIMULATION COMPLETED SUCCESSFULLY")
 

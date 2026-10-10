@@ -11,6 +11,7 @@ from alpineguard.agents.evacuation_agent import EvacuationRouteAgent
 from alpineguard.models.domain import (
     IncidentCategory, SeverityLevel, Coordinates, IncidentStatus
 )
+from alpineguard.models.approvals import ApprovalStatus
 
 class TestAlpineGuardAgents(unittest.TestCase):
 
@@ -75,7 +76,9 @@ class TestAlpineGuardAgents(unittest.TestCase):
         artifacts = response["multimodal_artifacts"]
         summary = response["action_summary"]
 
-        self.assertEqual(incident.status, IncidentStatus.EVACUATING)
+        # Nothing is dispatched or evacuated before the 112 operator approves
+        self.assertEqual(incident.status, IncidentStatus.AWAITING_APPROVAL)
+        self.assertEqual(len(response["pending_approvals"]), 2)
         self.assertEqual(incident.severity, SeverityLevel.LEVEL_4_HIGH)
         self.assertEqual(len(artifacts), 3) # NanoBanana map + Veo3 video + Imagen3 Rega LZ sketch
 
@@ -90,6 +93,30 @@ class TestAlpineGuardAgents(unittest.TestCase):
         self.assertEqual(dispatcher["severity"], "LEVEL_4_HIGH")
         self.assertIn("rega_lz_briefing_url", dispatcher)
         self.assertIn("Rega Helicopter Base Erstfeld", dispatcher["recommended_unit_dispatch"])
+        self.assertEqual(dispatcher["pending_action_ids"], [a["action_id"] for a in response["pending_approvals"]])
+
+        # The operator approves both actions; only then the incident is dispatched and evacuating
+        for action_id in dispatcher["pending_action_ids"]:
+            decided = self.supervisor.approvals.approve(action_id, operator_id="operator-test")
+            self.assertEqual(decided.status, ApprovalStatus.EXECUTED)
+        self.assertEqual(incident.status, IncidentStatus.EVACUATING)
+
+    def test_supervisor_rejected_actions_change_nothing(self):
+        response = self.supervisor.process_emergency_signal(
+            caller_id="+41791234567",
+            category=IncidentCategory.AVALANCHE,
+            canton="UR",
+            location="Furka Pass Summit",
+            coordinates=self.test_coords,
+            raw_distress_text="Avalanche on north face, party of 2 on the ridge."
+        )
+        incident = response["incident"]
+        for action_id in response["action_summary"]["dispatcher_112_console"]["pending_action_ids"]:
+            decided = self.supervisor.approvals.reject(action_id, operator_id="operator-test", note="Rega already on site")
+            self.assertEqual(decided.status, ApprovalStatus.REJECTED)
+            self.assertIsNone(decided.result)
+        self.assertEqual(incident.status, IncidentStatus.AWAITING_APPROVAL)
+        self.assertEqual(self.supervisor.approvals.pending(), [])
 
 if __name__ == "__main__":
     unittest.main()

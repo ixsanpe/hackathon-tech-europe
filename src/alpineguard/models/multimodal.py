@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 import uuid
-from alpineguard.models.domain import MultimodalArtifact, EvacuationRoute, Coordinates
+from alpineguard.models.domain import ArtifactType, MultimodalArtifact, EvacuationRoute, Coordinates
 
 class MultimodalGenerationPipeline:
     """
@@ -41,7 +41,7 @@ class MultimodalGenerationPipeline:
         return MultimodalArtifact(
             artifact_id=artifact_id,
             incident_id=incident_id,
-            artifact_type="nanobanana_map",
+            artifact_type=ArtifactType.NANOBANANA_MAP,
             media_url=media_url,
             prompt=f"NanoBanana Vector Evac Route from {route.waypoints[0].name} to {route.safe_destination_name} avoiding active avalanche polygon",
             metadata={
@@ -80,7 +80,7 @@ class MultimodalGenerationPipeline:
         return MultimodalArtifact(
             artifact_id=artifact_id,
             incident_id=incident_id,
-            artifact_type="veo3_video",
+            artifact_type=ArtifactType.VEO3_VIDEO,
             media_url=media_url,
             prompt=prompt,
             metadata={
@@ -115,7 +115,7 @@ class MultimodalGenerationPipeline:
         return MultimodalArtifact(
             artifact_id=artifact_id,
             incident_id=incident_id,
-            artifact_type="imagen3_lz_sketch",
+            artifact_type=ArtifactType.IMAGEN3_LZ_SKETCH,
             media_url=media_url,
             prompt=prompt,
             metadata={
