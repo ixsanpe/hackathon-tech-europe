@@ -117,6 +117,11 @@ def update_incident(
     clean_hazards = [scrub_pii(h) for h in (hazards or [])]
     position = Coordinates(latitude=latitude, longitude=longitude)
     if incident_id is None:
+        # one incident per call: a second agent working on the same call updates the existing card
+        existing = next((i for i in ctx.incidents.values() if set(i.call_ids) & set(call_ids)), None)
+        if existing is not None:
+            incident_id = existing.id
+    if incident_id is None:
         incident = Incident(
             id=new_id("inc"),
             category=IncidentCategory(category),
@@ -386,7 +391,8 @@ def specs() -> List[ToolSpec]:
         ToolSpec(
             name=ToolName.UPDATE_INCIDENT,
             description="Create the incident card for one emergency, or update it when incident_id is given. Put all "
-                        "calls about the same event into one incident. The description is a short factual summary "
+                        "calls about the same event into one incident. If a call already belongs to an incident, that "
+                        "incident is updated. The description is a short factual summary "
                         "without names or phone numbers. Severity 1-5 is your proposal.",
             parameters=object_schema({
                 "category": enum_schema(IncidentCategory, "Incident category."),

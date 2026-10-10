@@ -15,6 +15,7 @@ Use cases
 1. Operator console lists ``pending()`` actions as approval cards.
 2. Operator approves a dispatch: the units change to DISPATCHED in the world.
 3. Operator rejects a public alert: nothing is published.
+4. Listeners (``add_listener``) forward decisions, for example to the voice agent in the call.
 """
 
 import uuid
@@ -40,6 +41,23 @@ class ApprovalQueue:
         self._audit = audit
         self._actions: Dict[str, PendingAction] = {}
         self._executors: Dict[str, Callable[[], Dict[str, Any]]] = {}
+        self._listeners: List[Callable[[PendingAction], None]] = []
+
+    def add_listener(self, listener: Callable[[PendingAction], None]) -> None:
+        """
+        Register a function that is called after every operator decision.
+
+        Parameters:
+            listener: Called with the decided action (EXECUTED, FAILED or REJECTED).
+        """
+        self._listeners.append(listener)
+
+    def _notify(self, action: PendingAction) -> None:
+        for listener in self._listeners:
+            try:
+                listener(action)
+            except Exception:  # a broken listener must not undo the decision
+                logger.exception("Approval listener failed for %s", action.action_id)
 
     def submit(
         self,
@@ -170,6 +188,7 @@ class ApprovalQueue:
                 details={"tool": action.tool_name.value, "error": action.error},
                 incident_id=action.incident_id,
             )
+        self._notify(action)
         return action
 
     def reject(self, action_id: str, operator_id: str, note: Optional[str] = None) -> PendingAction:
@@ -197,6 +216,7 @@ class ApprovalQueue:
             details={"tool": action.tool_name.value, "summary": action.summary, "note": note},
             incident_id=action.incident_id,
         )
+        self._notify(action)
         return action
 
     def _require_pending(self, action_id: str, operator_id: str) -> PendingAction:
