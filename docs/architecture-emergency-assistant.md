@@ -66,6 +66,7 @@ The platform deploys specialized autonomous agents operating concurrently under 
 ### 2.1 Supervisor Dispatcher Agent
 * **Role**: Primary triage officer. Ingests incident inputs, evaluates severity (Level 1-5), and orchestrates subordinate specialized agents.
 * **Policy Engine**: Enforces legal limits (Swiss safety mandates, Cantonal emergency protocols, data privacy safeguards).
+* **Human approval**: Dispatch and evacuation are only proposed. They wait in the approval queue (`src/alpineguard/tools/approvals.py`) until the 112 operator approves (EU AI Act Annex III 5(d): human oversight, Art. 14).
 * **Model**: Gemini 3.8 Pro with function calling and structured reasoning.
 
 ### 2.2 Avalanche & Alpine Surveillance Agent
@@ -87,7 +88,13 @@ The platform deploys specialized autonomous agents operating concurrently under 
   * **Real-time 3D Evacuation Video (Veo 3)**: Generates short 5-10 second simulated fly-through videos showing the exact evacuation trajectory through the pass or valley.
   * **Visual Situational Briefings (Imagen 3)**: Creates clear tactical schematics and landing zone sketches for air rescue (Rega helicopters).
 
-### 2.5 Responder Simulation Agent (Demo & Readiness Sandbox)
+### 2.5 Background Incident Agent (cardiac arrest, forest fire)
+* **Role**: Works in the background while the voice agent talks to the caller. Prepares the incident for the operator: incident card, approved protocol, resources, spread forecast, exposure, evacuation route, and proposed actions.
+* **Model**: `gemini-3.8-flash` with function calling (`src/alpineguard/config.py`).
+* **Tools**: 20 tools in `src/alpineguard/tools/` (see 5.2). Four action tools only create pending actions; every tool call is written to the audit trail (`src/alpineguard/audit.py`).
+* **Demo**: `python demo_background_agent.py --scenario cardiac_arrest_zurich_hb` or `--scenario forest_fire_uetliberg` (simulated world in `src/alpineguard/simulation/`).
+
+### 2.6 Responder Simulation Agent (Demo & Readiness Sandbox)
 * **Role**: Simulates other emergency actors (firefighter brigades, cantonal police, rescue drones, volunteers, and emergency transit) in real-time.
 * **Capabilities**: Simulates radio communication chatter, ETA progression, and decentralized status updates to provide a realistic multi-party operational picture.
 
@@ -99,7 +106,7 @@ The platform deploys specialized autonomous agents operating concurrently under 
 * **Engine**: PostgreSQL 16 + **PostGIS** (geospatial operations) + **pgvector** (semantic search over incident logs and SOPs).
 * **Core Schemas**:
   * `users_and_callers`: Anonymized identity tokens, phone hashes, spoken language, medical badges, live GPS lat/long/altitude, last ping timestamp.
-  * `incidents`: Unique incident ID, severity level (1-5), incident category (avalanche, forest fire, flash flood, alpine trauma), status (`detected`, `evaluating`, `responders_dispatched`, `evacuating`, `resolved`), geo-polygon bounding box.
+  * `incidents`: Unique incident ID, severity level (1-5), incident category (avalanche, wildfire, rockfall, flood, alpine trauma, cardiac arrest), status (`detected`, `evaluating`, `awaiting_approval`, `dispatched`, `evacuating`, `resolved`), geo-polygon bounding box.
   * `agent_runs_and_checkpoints`: Tracks individual agent tasks, decision rationale, tool invocations, and approved supervisor overrides.
   * `live_assets`: Locations of ambulances, Rega rescue helicopters, drone swarms, snowplows, and volunteer responders.
   * `multimodal_artifacts`: Storage references (S3/Cloud Storage) for generated maps, Veo 3 evacuation clips, voice call recordings, and vision diagnostics.
@@ -124,15 +131,20 @@ The platform deploys specialized autonomous agents operating concurrently under 
   * Low-latency bidirectional audio streaming over WebSockets via WebRTC.
   * Voice Activity Detection (VAD) with interruptions support for fast, empathetic caller coaching.
   * Asynchronous Function Calling: Voice assistant triggers backend tools (e.g. `query_nearby_shelters`, `report_victim_count`, `request_evac_route`) while simultaneously speaking and comforting the caller.
+    Caution: Google's Live API docs (checked 2026-10-10) list asynchronous (NON_BLOCKING) tool calls only for Gemini 2.5 Flash Live; Gemini 3.1 Flash Live is synchronous only, and the docs say nothing about `gemini-3.8-live`. Therefore the voice agent gets only fast tools (`locate_caller`, `update_incident`, `get_protocol`, `find_aed`, `handoff_to_operator`); slow work runs in the background agent.
 
 ### 5.2 Tool & Connector Registry
-Standardized tool execution framework exposing:
-* `get_weather_and_avalanche_risk(canton, coordinates)`
-* `calculate_evacuation_path(start_coords, hazard_polygon)`
-* `generate_evacuation_visual(route_geojson, prompt)` -> Calls Veo 3 / Imagen 3
-* `anonymize_call_transcript(raw_audio_or_text)`
-* `dispatch_simulated_unit(unit_type, target_coords)`
-* `db_query_nearby_resources(postgis_point, radius_km)`
+Implemented in `src/alpineguard/tools/registry.py`. Every tool has a JSON schema (Gemini function declaration), a tier and the agent roles that may call it.
+Tier "operator approves" means the tool only creates a pending action; nothing happens before the operator approves.
+
+| Tool | Tier | Roles |
+| :--- | :--- | :--- |
+| `locate_caller`, `update_incident`, `get_protocol`, `handoff_to_operator`, `find_aed` | agent alone | voice, background |
+| `find_related_incidents`, `list_units`, `notify_centre`, `find_hospital` | agent alone | background |
+| `get_fire_data`, `get_weather`, `analyze_image`, `predict_spread`, `estimate_exposure`, `plan_evacuation`, `make_route_card` | agent alone | background |
+| `propose_dispatch`, `alert_first_responders`, `draft_public_alert`, `request_infra_action` | operator approves | background |
+
+Data seam: the simulated world (`src/alpineguard/simulation/world.py`) documents which `crisis_data` function (branch `feat/data-integration`) replaces each simulated data source.
 
 ---
 

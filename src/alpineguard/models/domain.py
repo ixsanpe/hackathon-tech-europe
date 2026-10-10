@@ -16,10 +16,12 @@ class IncidentCategory(str, Enum):
     ROCKFALL = "rockfall"
     FLOOD = "flood"
     ALPINE_TRAUMA = "alpine_trauma"
+    CARDIAC_ARREST = "cardiac_arrest"
 
 class IncidentStatus(str, Enum):
     DETECTED = "detected"
     EVALUATING = "evaluating"
+    AWAITING_APPROVAL = "awaiting_approval"  # agent proposed actions; the operator has not decided yet
     DISPATCHED = "dispatched"
     EVACUATING = "evacuating"
     RESOLVED = "resolved"
@@ -50,6 +52,9 @@ class Incident:
     hazard_polygon: Optional[List[Coordinates]] = None
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
+    call_ids: List[str] = field(default_factory=list)
+    persons_involved: Optional[int] = None
+    hazards: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -61,7 +66,10 @@ class Incident:
             "canton": self.canton,
             "description": self.description,
             "affected_radius_km": self.affected_radius_km,
-            "hazard_polygon": [p.to_dict() for p in self.hazard_polygon] if self.hazard_polygon else []
+            "hazard_polygon": [p.to_dict() for p in self.hazard_polygon] if self.hazard_polygon else [],
+            "call_ids": self.call_ids,
+            "persons_involved": self.persons_involved,
+            "hazards": self.hazards
         }
 
 @dataclass
@@ -111,11 +119,17 @@ class EvacuationRoute:
             "video_simulation_url": self.video_simulation_url
         }
 
+class ArtifactType(str, Enum):
+    VEO3_VIDEO = "veo3_video"
+    NANOBANANA_MAP = "nanobanana_map"
+    IMAGEN3_LZ_SKETCH = "imagen3_lz_sketch"
+    ROUTE_CARD_SVG = "route_card_svg"  # drawn by code from routing output, no generative model
+
 @dataclass
 class MultimodalArtifact:
     artifact_id: str
     incident_id: str
-    artifact_type: str # "veo3_video", "nanobanana_map", "imagen3_lz_sketch"
+    artifact_type: ArtifactType
     media_url: str
     prompt: str
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -125,7 +139,7 @@ class MultimodalArtifact:
         return {
             "artifact_id": self.artifact_id,
             "incident_id": self.incident_id,
-            "artifact_type": self.artifact_type,
+            "artifact_type": self.artifact_type.value,
             "media_url": self.media_url,
             "prompt": self.prompt,
             "metadata": self.metadata
