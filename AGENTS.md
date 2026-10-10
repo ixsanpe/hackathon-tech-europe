@@ -23,3 +23,10 @@ All agents and contributors working in this repository must strictly adhere to t
 
 6. **Centralized Configuration**:
    - Group all configurable items (e.g., model names, endpoints, temperature/top_p, thresholds, constants) in a centralized configuration file (e.g., `config.py` or equivalent config module).
+
+
+
+<!-- entire-agent:begin -->
+Read .entire/agent-guide.md for this repository's workflow, source inspection, and verification guidance.
+@.entire/agent-guide.md
+<!-- entire-agent:end -->
